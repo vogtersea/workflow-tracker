@@ -32,7 +32,6 @@ DefaultDirName={localappdata}\Programs\WorkflowTracker
 DefaultGroupName=工作流程跟踪工作台
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
 OutputDir={#OutputDir}
 OutputBaseFilename=WorkflowTracker-Setup-{#AppVersion}
 SetupIconFile=

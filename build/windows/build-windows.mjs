@@ -4,7 +4,8 @@
 /**
  * Windows 原生版打包脚本
  *
- * 全程只在本机完成：不访问 Docker、不访问 NAS、默认不联网。
+ * 全程只在本机完成：不访问 Docker、不访问 NAS。
+ * Node 运行时取本机已安装版本，构建过程不做任何下载，内网环境同样可用。
  * 产物是一个自包含目录 —— 内置 Node 运行时 + 应用代码 + 数据目录，
  * 双击启动即可运行，无需安装 Node、无需任何外部服务。
  *
@@ -141,7 +142,7 @@ function resolveNodeExe() {
     [
       '未找到可内置的 node.exe。',
       '请用 --node-exe 指定，或先安装 Node 22/24 到默认位置。',
-      '（本脚本不联网下载，避免在内网环境不可用。）'
+      '（脚本不自动下载，避免在无外网环境下卡住。）'
     ].join('\n')
   );
 }
@@ -305,14 +306,38 @@ function makeZip(pkg) {
 /* --------------------------- 5. 安装包 --------------------------- */
 
 function findIscc() {
-  const cands = [
-    'C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe',
-    'C:\\Program Files\\Inno Setup 6\\ISCC.exe',
-    path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Inno Setup 6', 'ISCC.exe')
-  ];
-  for (const c of cands) if (c && fs.existsSync(c)) return c;
+  // 1) PATH
   const where = spawnSync('where', ['iscc'], { encoding: 'utf8' });
   if (where.status === 0 && where.stdout.trim()) return where.stdout.trim().split(/\r?\n/)[0];
+
+  // 2) 常见安装位置（注意可能装在非系统盘）
+  const roots = [
+    process.env['ProgramFiles(x86)'],
+    process.env.ProgramFiles,
+    process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Programs') : ''
+  ].filter(Boolean);
+  for (const r of roots) {
+    for (const v of ['Inno Setup 7', 'Inno Setup 6']) {
+      const p = path.join(r, v, 'ISCC.exe');
+      if (fs.existsSync(p)) return p;
+    }
+  }
+
+  // 3) 注册表：安装位置可能被改到别的盘，按显示名反查
+  const ps = [
+    "$p=@('HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',",
+    "'HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',",
+    "'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*');",
+    'Get-ItemProperty $p -ErrorAction SilentlyContinue |',
+    "Where-Object { $_.DisplayName -like '*Inno Setup*' -and $_.InstallLocation } |",
+    "ForEach-Object { Join-Path $_.InstallLocation 'ISCC.exe' } |",
+    'Where-Object { Test-Path $_ } | Select-Object -First 1'
+  ].join(' ');
+  const r = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', ps], {
+    encoding: 'utf8'
+  });
+  if (r.status === 0 && r.stdout.trim()) return r.stdout.trim();
+
   return '';
 }
 

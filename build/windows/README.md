@@ -1,6 +1,15 @@
 # Windows 原生版构建说明
 
-本目录用于把「工作流程跟踪工作台」打包成**不依赖 Docker、不依赖 NAS、不联网**的 Windows 本机程序。
+本目录用于把「工作流程跟踪工作台」打包成**不依赖 Docker、不依赖 NAS** 的 Windows 本机程序。构建与运行都不需要联网（内网可直接用），但需要联网时也不影响——大模型接入等网络能力照常可用。
+
+## 交付物
+
+| 文件 | 说明 |
+|---|---|
+| `WorkflowTracker-Setup-1.0.0.exe` | **首选交付物**。单文件安装程序，35 MB，双击即装，当前用户安装、不弹 UAC，装完在开始菜单/桌面可直接启动，可在「设置 → 应用」卸载 |
+| `工作流程跟踪工作台-win-x64-1.0.0.zip` | 便携包，50 MB，解压后双击 `启动工作台.cmd`，适合免安装场景 |
+
+安装包与便携包运行的是同一份目录产物。
 
 ## 一、总体思路与取舍
 
@@ -148,11 +157,23 @@ node build/windows/build-windows.mjs --no-zip
 
 ### 生成安装包的两种方式
 
-1. **Inno Setup（推荐，产出单文件 Setup.exe）**
-   安装 Inno Setup 6 后执行 `--installer`，或用 ISCC 手工编译 `build/windows/installer.iss`。
-   该配置按当前用户安装（`PrivilegesRequired=lowest`），不弹 UAC，排除 `data` 目录，卸载时保留数据。
+1. **Inno Setup（产出单文件 Setup.exe，首选）**
 
-2. **免安装的安装脚本**
+   ```bash
+   node build/windows/build-windows.mjs --installer
+   ```
+
+   脚本会自动查找 ISCC.exe，查找顺序为：`PATH` → 常见安装目录 → **注册表反查安装位置**（因此装在 D 盘或自定义目录也能识别）。
+   找不到时先装 Inno Setup 6，任选其一：
+
+   ```bash
+   winget install -e --id JRSoftware.InnoSetup
+   # 或从 https://jrsoftware.org/isdl.php 下载后安装
+   ```
+
+   安装包配置要点：`PrivilegesRequired=lowest`（当前用户安装、不弹 UAC、写 HKCU 卸载项）、排除 `data` 目录、卸载时保留数据、附带「停止工作台」与「查看运行状态」快捷方式。
+
+2. **免安装的安装脚本（无 Inno Setup 时的退路）**
    便携版里附带 `安装到本机.cmd`，走 `launch\install.ps1`：
    复制到 `%LOCALAPPDATA%\Programs\WorkflowTracker`、建开始菜单与桌面快捷方式、写入「应用和功能」卸载项。
    支持 `-AutoStart`（开机自启）与 `-NoDesktop`（不建桌面图标）。

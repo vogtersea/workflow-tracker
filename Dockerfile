@@ -4,8 +4,11 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 
 # 依赖层单独缓存：package.json 不变时跳过 npm install
+# 国内网络可加 --build-arg NPM_REGISTRY=https://registry.npmmirror.com 提速
+ARG NPM_REGISTRY=https://registry.npmjs.org
 COPY package.json package-lock.json* ./
-RUN npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+RUN npm config set registry "$NPM_REGISTRY" \
+    && (npm ci --no-audit --no-fund || npm install --no-audit --no-fund)
 
 COPY . .
 

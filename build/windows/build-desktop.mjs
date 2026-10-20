@@ -136,6 +136,19 @@ async function main() {
   log(`  应用资源：${APPDATA_DIR}`);
 
   step('2. 打包 Electron 应用');
+
+  // Electron 刻意不写进 package.json（否则 Docker 的 npm ci 会连带下载），
+  // 所以这里显式告诉 packager 用本机 node_modules 里的版本。
+  let electronVersion = '44.9.1';
+  try {
+    electronVersion = JSON.parse(
+      fs.readFileSync(path.join(REPO_ROOT, 'node_modules', 'electron', 'package.json'), 'utf8')
+    ).version;
+  } catch {
+    log('  未读到 node_modules/electron 版本，使用默认值');
+  }
+  log(`  Electron 版本：${electronVersion}`);
+
   rmTree(PKG_OUT);
   const built = await packager({
     dir: DESKTOP_SRC,
@@ -145,6 +158,7 @@ async function main() {
     out: PKG_OUT,
     overwrite: true,
     appVersion: pkg.version,
+    electronVersion,
     icon: path.join(DESKTOP_SRC, 'icon.ico'),
     extraResource: [APPDATA_DIR],
     prune: true,

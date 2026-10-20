@@ -6,10 +6,32 @@
 
 | 文件 | 说明 |
 |---|---|
-| `WorkflowTracker-Setup-1.0.0.exe` | **首选交付物**。单文件安装程序，35 MB，双击即装，当前用户安装、不弹 UAC，装完在开始菜单/桌面可直接启动，可在「设置 → 应用」卸载 |
-| `工作流程跟踪工作台-win-x64-1.0.0.zip` | 便携包，50 MB，解压后双击 `启动工作台.cmd`，适合免安装场景 |
+| `WorkflowTracker-Desktop-Setup-1.0.0.exe` | **首选交付物**。桌面版安装程序，121 MB，独立窗口程序，装完从开始菜单启动，不经过浏览器 |
+| `WorkflowTracker-Setup-1.0.0.exe` | 服务版安装程序，35 MB，界面跑在本机服务里，用浏览器访问 |
+| `工作流程跟踪工作台-win-x64-1.0.0.zip` | 服务版便携包，50 MB，解压后双击 `启动工作台.cmd` |
 
-安装包与便携包运行的是同一份目录产物。
+三个包共用同一份 Next standalone 产物与同一套 SQLite 数据格式。
+
+### 桌面版的技术形态
+
+桌面版在本目录的 `../desktop/`，是一个 Electron 外壳：
+
+- 主进程 `main.js` 用 **Electron 自带的 Node（`ELECTRON_RUN_AS_NODE`）** 启动 Next standalone 服务，
+  因此最终只有一个 `WorkflowTracker.exe`，不需要额外带 `node.exe`。
+- 服务只监听 `127.0.0.1` 的可用端口，页面加载进 `BrowserWindow`，没有地址栏与浏览器痕迹。
+- 数据在 `%APPDATA%\工作流程跟踪工作台\data`，卸载程序不会删除。
+- 首次运行生成随机管理员密码，弹窗提示并写入 `data\初始密码.txt`。
+
+打包命令：
+
+```bash
+node build/windows/build-desktop.mjs                                   # 复用 .next
+node build/windows/build-desktop.mjs --app-from <standalone目录>        # 指定产物
+node build/windows/build-desktop.mjs --no-installer                     # 只出程序目录
+node build/windows/build-desktop.mjs --out-dir D:\out                   # 指定输出目录
+```
+
+Electron 二进制默认从 npmmirror 取（`ELECTRON_MIRROR`），已下载过的会命中本地缓存。
 
 ## 一、总体思路与取舍
 

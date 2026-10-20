@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Modal, ConfirmDialog, Empty, Loading, DueChip, PriorityChip, StatusChip, TagPills } from '@/components/ui';
 import { useShell } from '@/components/Shell';
-import type { TaskDto, TagDto, CurrentUser } from '@/types';
+import type { TaskDto, TagDto, CurrentUser, CadenceDto } from '@/types';
 
 const PRIORITIES = [
   { value: 'urgent', label: '紧急' },
@@ -14,8 +14,21 @@ const PRIORITIES = [
   { value: 'low', label: '低' }
 ];
 
+const WEEKDAY_NAMES = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+
+const CADENCE_OPTIONS: { value: CadenceDto; label: string }[] = [
+  { value: 'daily', label: '每天' },
+  { value: 'weekly', label: '每周' },
+  { value: 'monthly', label: '每月' },
+  { value: 'quarterly', label: '每季度' },
+  { value: 'halfyearly', label: '每半年' },
+  { value: 'yearly', label: '每年' }
+];
+
 interface FormState {
   id?: number;
+  /** oneoff=一次性工作；routine=例行固定工作（按周期重复） */
+  kind: 'oneoff' | 'routine';
   title: string;
   detail: string;
   done_criteria: string;
@@ -24,9 +37,16 @@ interface FormState {
   owner_id: string;
   tag_ids: number[];
   estimate_hours: string;
+  /** 例行工作周期 */
+  cadence: CadenceDto;
+  weekday: number;
+  month_day: number;
+  month_no: number;
+  due_offset: number;
 }
 
 const EMPTY_FORM: FormState = {
+  kind: 'oneoff',
   title: '',
   detail: '',
   done_criteria: '',
@@ -34,7 +54,12 @@ const EMPTY_FORM: FormState = {
   priority: 'normal',
   owner_id: '',
   tag_ids: [],
-  estimate_hours: ''
+  estimate_hours: '',
+  cadence: 'monthly',
+  weekday: 5,
+  month_day: 28,
+  month_no: 12,
+  due_offset: 0
 };
 
 function TasksInner() {
@@ -141,6 +166,44 @@ function TasksInner() {
     setSaving(true);
     setFormError('');
     try {
+      // 例行固定工作：落到周期模板，并立即生成本周期实例
+      if (form.kind === 'routine') {
+        const res = await fetch('/api/templates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: form.title.trim(),
+            detail: form.detail,
+            done_criteria: form.done_criteria,
+            cadence: form.cadence,
+            weekday: form.weekday,
+            month_day: form.month_day,
+            month_no: form.month_no,
+            due_offset: form.due_offset,
+            priority: form.priority,
+            owner_id: form.owner_id ? Number(form.owner_id) : null,
+            tag_ids: form.tag_ids
+          })
+        });
+        const json = await res.json();
+        if (!json.ok) {
+          setFormError(json.error || '保存失败');
+          return;
+        }
+        setShowForm(false);
+        setForm(EMPTY_FORM);
+        toast(
+          json.data.generated > 0
+            ? '例行工作已建立，本周期工作已生成'
+            : '例行工作已建立，将在到期前自动生成',
+          'success'
+        );
+        refreshBadges();
+        load();
+        if (params.get('new') === '1') router.replace('/tasks');
+        return;
+      }
+
       const payload = {
         title: form.title.trim(),
         detail: form.detail,
@@ -312,12 +375,19 @@ function TasksInner() {
               {rows.map((t) => (
                 <tr key={t.id}>
                   <td>
-                    <Link
-                      href={`/tasks/${t.id}`}
-                      style={{ fontWeight: 600, color: 'var(--ink-900)', fontSize: 13.5 }}
-                    >
-                      {t.title}
-                    </Link>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Link
+                        href={`/tasks/${t.id}`}
+                        style={{ fontWeight: 600, color: 'var(--ink-900)', fontSize: 13.5 }}
+                      >
+                        {t.title}
+                      </Link>
+                      {t.template_id && (
+                        <span className="chip chip-gold" style={{ fontSize: 10 }}>
+                          例行
+                        </span>
+                      )}
+                    </div>
                     {t.done_criteria && (
                       <div
                         style={{
@@ -410,6 +480,31 @@ function TasksInner() {
           {formError && <div className="alert alert-error">{formError}</div>}
 
           <div className="field">
+            <label className="field-label">工作类型</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                className={`btn btn-sm ${form.kind === 'oneoff' ? 'btn-primary' : ''}`}
+                onClick={() => setForm({ ...form, kind: 'oneoff' })}
+              >
+                一次性工作
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${form.kind === 'routine' ? 'btn-primary' : ''}`}
+                onClick={() => setForm({ ...form, kind: 'routine' })}
+              >
+                例行固定工作
+              </button>
+            </div>
+            <div className="field-hint">
+              {form.kind === 'routine'
+                ? '按天／周／月／季度／半年／年重复，到期前自动排入待办，每个周期生成一次'
+                : '有明确起止的一次性事项，需要自己填 DDL'}
+            </div>
+          </div>
+
+          <div className="field">
             <label className="field-label">
               工作名称<span className="req">*</span>
             </label>
@@ -417,7 +512,9 @@ function TasksInner() {
               className="input"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="如：撰写XX季度工作总结材料"
+              placeholder={
+                form.kind === 'routine' ? '如：每周工作报送' : '如：撰写XX季度工作总结材料'
+              }
               autoFocus
             />
           </div>
@@ -444,31 +541,125 @@ function TasksInner() {
             <div className="field-hint">完成条件是销号依据，建议写成可检验的具体标准</div>
           </div>
 
-          <div className="form-row">
-            <div className="field">
-              <label className="field-label">DDL</label>
-              <input
-                type="date"
-                className="input"
-                value={form.due_date}
-                onChange={(e) => setForm({ ...form, due_date: e.target.value })}
-              />
+          {form.kind === 'routine' ? (
+            <div className="form-row-3">
+              <div className="field">
+                <label className="field-label">周期类型</label>
+                <select
+                  className="select"
+                  value={form.cadence}
+                  onChange={(e) => setForm({ ...form, cadence: e.target.value as CadenceDto })}
+                >
+                  {CADENCE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {form.cadence === 'weekly' && (
+                <div className="field">
+                  <label className="field-label">到期星期</label>
+                  <select
+                    className="select"
+                    value={form.weekday}
+                    onChange={(e) => setForm({ ...form, weekday: Number(e.target.value) })}
+                  >
+                    {WEEKDAY_NAMES.map((w, i) => (
+                      <option key={w} value={i + 1}>
+                        {w}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {form.cadence === 'yearly' && (
+                <div className="field">
+                  <label className="field-label">到期月份</label>
+                  <select
+                    className="select"
+                    value={form.month_no}
+                    onChange={(e) => setForm({ ...form, month_no: Number(e.target.value) })}
+                  >
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                      <option key={m} value={m}>
+                        {m} 月
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {form.cadence !== 'daily' && form.cadence !== 'weekly' && (
+                <div className="field">
+                  <label className="field-label">到期日</label>
+                  <input
+                    type="number"
+                    className="input"
+                    min="1"
+                    max="31"
+                    value={form.month_day}
+                    onChange={(e) => setForm({ ...form, month_day: Number(e.target.value) })}
+                  />
+                </div>
+              )}
+
+              <div className="field">
+                <label className="field-label">优先级</label>
+                <select
+                  className="select"
+                  value={form.priority}
+                  onChange={(e) => setForm({ ...form, priority: e.target.value })}
+                >
+                  {PRIORITIES.map((p) => (
+                    <option key={p.value} value={p.value}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label className="field-label">顺延天数</label>
+                <input
+                  type="number"
+                  className="input"
+                  min="-30"
+                  max="30"
+                  value={form.due_offset}
+                  onChange={(e) => setForm({ ...form, due_offset: Number(e.target.value) })}
+                />
+              </div>
             </div>
-            <div className="field">
-              <label className="field-label">优先级</label>
-              <select
-                className="select"
-                value={form.priority}
-                onChange={(e) => setForm({ ...form, priority: e.target.value })}
-              >
-                {PRIORITIES.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
+          ) : (
+            <div className="form-row">
+              <div className="field">
+                <label className="field-label">DDL</label>
+                <input
+                  type="date"
+                  className="input"
+                  value={form.due_date}
+                  onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+                />
+              </div>
+              <div className="field">
+                <label className="field-label">优先级</label>
+                <select
+                  className="select"
+                  value={form.priority}
+                  onChange={(e) => setForm({ ...form, priority: e.target.value })}
+                >
+                  {PRIORITIES.map((p) => (
+                    <option key={p.value} value={p.value}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </div>
+          )}
 
           {isAdmin && (
             <div className="form-row">

@@ -53,6 +53,21 @@ export function monthRange(d: Date = new Date()) {
   return { start: ymd(start), end: ymd(end), label: `${d.getFullYear()}年${d.getMonth() + 1}月` };
 }
 
+/** 指定年月的天数，month 从 1 开始 */
+export function daysInMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate();
+}
+
+/** 季度：1-4 */
+export function quarterOf(d: Date = new Date()): number {
+  return Math.floor(d.getMonth() / 3) + 1;
+}
+
+/** 半年：1=上半年，2=下半年 */
+export function halfOf(d: Date = new Date()): number {
+  return d.getMonth() < 6 ? 1 : 2;
+}
+
 export function yearRange(d: Date = new Date()) {
   return {
     start: ymd(new Date(d.getFullYear(), 0, 1)),

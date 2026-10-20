@@ -45,7 +45,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     { href: '/reports/new', label: '生成报告', icon: '✦', key: 'gen' }
   ]},
   { group: '管理', items: [
-    { href: '/templates', label: '周期模板', icon: '↻', key: 'templates' },
+    { href: '/templates', label: '例行工作', icon: '↻', key: 'templates' },
     { href: '/tags', label: '标签管理', icon: '◈', key: 'tags' },
     { href: '/notifications', label: '待办提醒', icon: '⚑', key: 'noti', badge: 'unseen' }
   ]},

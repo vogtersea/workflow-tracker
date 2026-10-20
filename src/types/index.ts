@@ -29,6 +29,7 @@ export interface TaskDto {
   status: 'open' | 'done' | 'archived';
   owner_id: number | null;
   owner_name?: string | null;
+  template_id: number | null;
   period_label: string | null;
   week_start: string | null;
   done_at: string | null;
@@ -52,14 +53,17 @@ export interface ProgressDto {
   created_at: string;
 }
 
+export type CadenceDto = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'halfyearly' | 'yearly';
+
 export interface TemplateDto {
   id: number;
   title: string;
   detail: string;
   done_criteria: string;
-  cadence: 'weekly' | 'monthly';
+  cadence: CadenceDto;
   weekday: number | null;
   month_day: number | null;
+  month_no: number | null;
   due_offset: number;
   priority: string;
   owner_id: number | null;
@@ -68,6 +72,16 @@ export interface TemplateDto {
   enabled: number;
   last_run_period: string | null;
   created_at: string;
+  /** 当前周期标识，如 2026-10 / 2026-Q4 / 2026-H2 */
+  current_period: string;
+  /** 当前周期中文名 */
+  current_label: string;
+  /** 当前周期实例到期日 */
+  period_due: string;
+  /** 当前周期实例状态，none 表示尚未生成 */
+  period_status: 'none' | 'open' | 'done' | 'archived';
+  /** 生成规则自然语言描述 */
+  rule_text: string;
 }
 
 export interface ReportDto {

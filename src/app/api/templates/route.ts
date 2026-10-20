@@ -5,10 +5,14 @@ import {
   createTemplate,
   updateTemplate,
   deleteTemplate,
-  generateFromTemplates
+  generateFromTemplates,
+  CADENCE_LABEL,
+  type Cadence
 } from '@/lib/templates';
 
 export const dynamic = 'force-dynamic';
+
+const CADENCES = Object.keys(CADENCE_LABEL) as Cadence[];
 
 export async function GET() {
   try {
@@ -26,7 +30,7 @@ export async function POST(req: Request) {
 
     if (!body.title?.trim())
       return NextResponse.json({ ok: false, error: '模板名称不能为空' }, { status: 400 });
-    if (!['weekly', 'monthly'].includes(body.cadence))
+    if (!CADENCES.includes(body.cadence))
       return NextResponse.json({ ok: false, error: '周期类型不合法' }, { status: 400 });
 
     const id = createTemplate({
@@ -35,7 +39,9 @@ export async function POST(req: Request) {
       done_criteria: body.done_criteria ?? '',
       cadence: body.cadence,
       weekday: body.cadence === 'weekly' ? Number(body.weekday ?? 5) : null,
-      month_day: body.cadence === 'monthly' ? Number(body.month_day ?? 25) : null,
+      month_day:
+        body.cadence === 'daily' ? null : Number(body.month_day ?? 28),
+      month_no: body.cadence === 'yearly' ? Number(body.month_no ?? 12) : null,
       due_offset: Number(body.due_offset ?? 0),
       priority: body.priority || 'normal',
       owner_id: user.role === 'admin' ? (body.owner_id ?? null) : user.id,
@@ -44,8 +50,8 @@ export async function POST(req: Request) {
 
     audit(user.id, 'template.create', String(id), body.title);
 
-    // 立即尝试生成一次实例
-    const gen = generateFromTemplates();
+    // 新建后立即生成本周期实例：例行工作创建即有，不必等到进入提醒窗口
+    const gen = generateFromTemplates({ force: true, templateId: id });
     return NextResponse.json({ ok: true, data: { id, generated: gen.generated, details: gen.details } });
   } catch (e) {
     if (e instanceof UnauthorizedError)

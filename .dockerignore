@@ -20,3 +20,5 @@ outputs
 .last-prompt.txt
 next-env.d.ts
 *.tsbuildinfo
+.tmp-cadence
+.tmp-test

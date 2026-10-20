@@ -14,6 +14,8 @@ data/
 outputs/
 next-env.d.ts
 *.tsbuildinfo
+.tmp-cadence/
+.tmp-test/
 .vault*/
 .vaulttest/
 .vaulttmp/

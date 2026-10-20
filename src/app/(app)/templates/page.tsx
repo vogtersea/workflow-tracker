@@ -3,9 +3,29 @@
 import { useState, useEffect } from 'react';
 import { Empty, Loading, ConfirmDialog, Modal } from '@/components/ui';
 import { useShell } from '@/components/Shell';
-import type { TemplateDto, TagDto, CurrentUser } from '@/types';
+import type { TemplateDto, TagDto, CurrentUser, CadenceDto } from '@/types';
 
 const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+
+const CADENCE_OPTIONS: { value: CadenceDto; label: string; hint: string }[] = [
+  { value: 'daily', label: '每天', hint: '每个工作日都要做的固定动作' },
+  { value: 'weekly', label: '每周', hint: '如每周报送、每周例会材料' },
+  { value: 'monthly', label: '每月', hint: '如月度报表、月度总结' },
+  { value: 'quarterly', label: '每季度', hint: '如季度分析、季度考核材料' },
+  { value: 'halfyearly', label: '每半年', hint: '如半年总结、半年检查' },
+  { value: 'yearly', label: '每年', hint: '如年度总结、年度工作计划' }
+];
+
+const PERIOD_STATUS: Record<TemplateDto['period_status'], { text: string; cls: string }> = {
+  none: { text: '未生成', cls: 'chip-muted' },
+  open: { text: '进行中', cls: 'chip-gold' },
+  done: { text: '已完成', cls: 'chip-ok' },
+  archived: { text: '已归档', cls: 'chip-muted' }
+};
+
+function cadenceLabel(c: CadenceDto): string {
+  return CADENCE_OPTIONS.find((o) => o.value === c)?.label || c;
+}
 
 export default function TemplatesPage() {
   const { user, toast } = useShell();
@@ -21,9 +41,10 @@ export default function TemplatesPage() {
     title: '',
     detail: '',
     done_criteria: '',
-    cadence: 'weekly' as 'weekly' | 'monthly',
+    cadence: 'monthly' as CadenceDto,
     weekday: 5,
-    month_day: 25,
+    month_day: 28,
+    month_no: 12,
     due_offset: 0,
     priority: 'normal',
     owner_id: '',
@@ -54,7 +75,7 @@ export default function TemplatesPage() {
 
   async function create() {
     if (!form.title.trim()) {
-      toast('请填写模板名称', 'error');
+      toast('请填写工作名称', 'error');
       return;
     }
     setSaving(true);
@@ -72,8 +93,8 @@ export default function TemplatesPage() {
         setShowForm(false);
         toast(
           json.data.generated > 0
-            ? `模板已创建，并已生成 ${json.data.generated} 项本周工作`
-            : '模板已创建，将在到期前自动生成工作实例',
+            ? `例行工作已建立，本周期工作已生成`
+            : '例行工作已建立，将在到期前自动生成',
           'success'
         );
         setForm({ ...form, title: '', detail: '', done_criteria: '', tag_ids: [] });
@@ -99,7 +120,7 @@ export default function TemplatesPage() {
     const json = await res.json();
     setDeleteId(null);
     if (json.ok) {
-      toast('模板已删除', 'success');
+      toast('例行工作已删除', 'success');
       load();
     } else toast(json.error || '删除失败', 'error');
   }
@@ -120,29 +141,31 @@ export default function TemplatesPage() {
 
   if (loading) return <Loading />;
 
+  const needDay = form.cadence !== 'daily' && form.cadence !== 'weekly';
+
   return (
     <>
       <div className="toolbar">
         <div style={{ fontSize: 12.5, color: 'var(--ink-500)' }}>
-          周期模板定义固定动作的重复规则，到期前 7 天自动生成工作实例，每个周期仅生成一次
+          例行固定工作按天／周／月／季度／半年／年重复，到期前自动生成工作实例，每个周期只生成一次
         </div>
         <div className="toolbar-spacer" />
         <button className="btn btn-sm" onClick={manualGenerate}>
           立即检查生成
         </button>
         <button className="btn btn-primary" onClick={() => setShowForm(true)}>
-          + 新建模板
+          + 新建例行工作
         </button>
       </div>
 
       {templates.length === 0 ? (
         <div className="panel">
           <Empty
-            title="暂无周期模板"
-            desc="适用于「每周报送」「每月总结」这类固定动作，设置一次后系统自动按周期生成工作"
+            title="暂无例行工作"
+            desc="周报、月报、季度分析、年度总结这类固定动作，在这里设置一次，系统就按周期自动排进待办"
             action={
               <button className="btn btn-primary btn-sm" onClick={() => setShowForm(true)}>
-                新建第一个模板
+                新建第一个例行工作
               </button>
             }
           />
@@ -152,63 +175,76 @@ export default function TemplatesPage() {
           <table className="table">
             <thead>
               <tr>
-                <th>模板名称</th>
-                <th style={{ width: 100 }}>周期</th>
-                <th style={{ width: 130 }}>生成规则</th>
+                <th>工作名称</th>
+                <th style={{ width: 90 }}>周期</th>
+                <th style={{ width: 220 }}>到期规则</th>
+                <th style={{ width: 170 }}>本周期</th>
                 <th style={{ width: 90 }}>责任人</th>
-                <th style={{ width: 100 }}>上次生成</th>
                 <th style={{ width: 80 }}>状态</th>
                 <th style={{ width: 130 }}>操作</th>
               </tr>
             </thead>
             <tbody>
-              {templates.map((t) => (
-                <tr key={t.id}>
-                  <td>
-                    <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--ink-900)' }}>
-                      {t.title}
-                    </div>
-                    {t.done_criteria && (
-                      <div style={{ fontSize: 11.5, color: 'var(--ink-400)', marginTop: 2 }}>
-                        {t.done_criteria}
+              {templates.map((t) => {
+                const ps = PERIOD_STATUS[t.period_status] || PERIOD_STATUS.none;
+                return (
+                  <tr key={t.id}>
+                    <td>
+                      <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--ink-900)' }}>
+                        {t.title}
                       </div>
-                    )}
-                  </td>
-                  <td>
-                    <span className="chip chip-gold">
-                      {t.cadence === 'weekly' ? '每周' : '每月'}
-                    </span>
-                  </td>
-                  <td style={{ fontSize: 12, color: 'var(--ink-600)' }}>
-                    {t.cadence === 'weekly'
-                      ? `${WEEKDAYS[(t.weekday || 5) - 1]}到期`
-                      : `每月 ${t.month_day} 日到期`}
-                    {t.due_offset ? `（偏移 ${t.due_offset} 天）` : ''}
-                  </td>
-                  <td style={{ fontSize: 12.5 }}>{t.owner_name || '—'}</td>
-                  <td style={{ fontSize: 11.5, color: 'var(--ink-400)' }}>
-                    {t.last_run_period || '尚未生成'}
-                  </td>
-                  <td>
-                    <span className={`chip ${t.enabled ? 'chip-ok' : 'chip-muted'}`}>
-                      {t.enabled ? '启用' : '停用'}
-                    </span>
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <button className="btn btn-sm btn-ghost" onClick={() => toggle(t.id, t.enabled)}>
-                        {t.enabled ? '停用' : '启用'}
-                      </button>
-                      <button
-                        className="btn btn-sm btn-ghost btn-danger"
-                        onClick={() => setDeleteId(t.id)}
+                      {t.done_criteria && (
+                        <div style={{ fontSize: 11.5, color: 'var(--ink-400)', marginTop: 2 }}>
+                          {t.done_criteria}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <span className="chip chip-gold">{cadenceLabel(t.cadence)}</span>
+                    </td>
+                    <td style={{ fontSize: 12, color: 'var(--ink-600)' }}>{t.rule_text}</td>
+                    <td>
+                      <div style={{ fontSize: 12.5, color: 'var(--ink-800)' }}>
+                        {t.current_label}
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          marginTop: 3,
+                          fontSize: 11.5,
+                          color: 'var(--ink-400)'
+                        }}
                       >
-                        删除
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        <span className={`chip ${ps.cls}`} style={{ fontSize: 10.5 }}>
+                          {ps.text}
+                        </span>
+                        <span>到期 {t.period_due}</span>
+                      </div>
+                    </td>
+                    <td style={{ fontSize: 12.5 }}>{t.owner_name || '—'}</td>
+                    <td>
+                      <span className={`chip ${t.enabled ? 'chip-ok' : 'chip-muted'}`}>
+                        {t.enabled ? '启用' : '停用'}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button className="btn btn-sm btn-ghost" onClick={() => toggle(t.id, t.enabled)}>
+                          {t.enabled ? '停用' : '启用'}
+                        </button>
+                        <button
+                          className="btn btn-sm btn-ghost btn-danger"
+                          onClick={() => setDeleteId(t.id)}
+                        >
+                          删除
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -216,7 +252,7 @@ export default function TemplatesPage() {
 
       {showForm && (
         <Modal
-          title="新建周期模板"
+          title="新建例行工作"
           onClose={() => setShowForm(false)}
           footer={
             <>
@@ -231,13 +267,14 @@ export default function TemplatesPage() {
         >
           <div className="field">
             <label className="field-label">
-              模板名称<span className="req">*</span>
+              工作名称<span className="req">*</span>
             </label>
             <input
               className="input"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="如：每周周报报送"
+              placeholder="如：每周工作报送"
+              autoFocus
             />
           </div>
           <div className="field">
@@ -256,24 +293,30 @@ export default function TemplatesPage() {
               style={{ minHeight: 56 }}
               value={form.done_criteria}
               onChange={(e) => setForm({ ...form, done_criteria: e.target.value })}
+              placeholder="可验收的交付标准，会带入每次生成的工作实例"
             />
           </div>
 
-          <div className="form-row-3">
-            <div className="field">
-              <label className="field-label">周期类型</label>
-              <select
-                className="select"
-                value={form.cadence}
-                onChange={(e) =>
-                  setForm({ ...form, cadence: e.target.value as 'weekly' | 'monthly' })
-                }
-              >
-                <option value="weekly">每周</option>
-                <option value="monthly">每月</option>
-              </select>
+          <div className="field">
+            <label className="field-label">周期类型</label>
+            <select
+              className="select"
+              value={form.cadence}
+              onChange={(e) => setForm({ ...form, cadence: e.target.value as CadenceDto })}
+            >
+              {CADENCE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <div className="field-hint">
+              {CADENCE_OPTIONS.find((o) => o.value === form.cadence)?.hint}
             </div>
-            {form.cadence === 'weekly' ? (
+          </div>
+
+          <div className="form-row-3">
+            {form.cadence === 'weekly' && (
               <div className="field">
                 <label className="field-label">到期星期</label>
                 <select
@@ -288,19 +331,53 @@ export default function TemplatesPage() {
                   ))}
                 </select>
               </div>
-            ) : (
+            )}
+
+            {form.cadence === 'yearly' && (
+              <div className="field">
+                <label className="field-label">到期月份</label>
+                <select
+                  className="select"
+                  value={form.month_no}
+                  onChange={(e) => setForm({ ...form, month_no: Number(e.target.value) })}
+                >
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                    <option key={m} value={m}>
+                      {m} 月
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {needDay && (
               <div className="field">
                 <label className="field-label">到期日</label>
                 <input
                   type="number"
                   className="input"
                   min="1"
-                  max="28"
+                  max="31"
                   value={form.month_day}
                   onChange={(e) => setForm({ ...form, month_day: Number(e.target.value) })}
                 />
+                <div className="field-hint">超出当月天数时按月末计算</div>
               </div>
             )}
+
+            <div className="field">
+              <label className="field-label">顺延天数</label>
+              <input
+                type="number"
+                className="input"
+                min="-30"
+                max="30"
+                value={form.due_offset}
+                onChange={(e) => setForm({ ...form, due_offset: Number(e.target.value) })}
+              />
+              <div className="field-hint">可为负数，表示提前</div>
+            </div>
+
             <div className="field">
               <label className="field-label">优先级</label>
               <select
@@ -360,14 +437,15 @@ export default function TemplatesPage() {
           </div>
 
           <div className="alert alert-info">
-            生成规则：系统在到期日进入 7 天提醒窗口时自动生成工作实例，同一周期只生成一次，不会重复。
+            创建后立即生成本周期的工作；此后在到期前自动排入待办（每天提前 1 天、每周／每月提前 7
+            天、每季度提前 14 天、每半年提前 21 天、每年提前 30 天），同一周期只生成一次。
           </div>
         </Modal>
       )}
 
       {deleteId && (
         <ConfirmDialog
-          message="删除模板后不再自动生成新的周期工作，已生成的工作实例会保留。确定删除？"
+          message="删除后不再自动生成新的周期工作，已生成的工作实例会保留。确定删除？"
           onCancel={() => setDeleteId(null)}
           onConfirm={doDelete}
           confirmText="确认删除"

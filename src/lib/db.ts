@@ -132,6 +132,7 @@ function migrate(db: DbLike) {
       cadence      TEXT NOT NULL,
       weekday      INTEGER,
       month_day    INTEGER,
+      month_no     INTEGER,
       due_offset   INTEGER NOT NULL DEFAULT 0,
       priority     TEXT NOT NULL DEFAULT 'normal',
       owner_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -235,6 +236,17 @@ function migrate(db: DbLike) {
       created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
     );
   `);
+
+  // 增量列（老库升级）：CREATE TABLE IF NOT EXISTS 不会补列，需显式 ALTER
+  ensureColumn(db, 'task_templates', 'month_no', 'INTEGER');
+}
+
+/** 幂等补列 */
+function ensureColumn(db: DbLike, table: string, column: string, type: string) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+  }
 }
 
 // ---------- 通用设置读写 ----------

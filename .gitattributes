@@ -1,0 +1,18 @@
+# 统一换行符，避免 Windows 提交后 Linux/NAS 上脚本无法执行
+* text=auto eol=lf
+
+# Shell 脚本必须保持 LF，否则容器内无法执行
+*.sh text eol=lf
+Dockerfile text eol=lf
+
+# 二进制文件不做换行转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.docx binary
+*.xlsx binary
+*.pptx binary
+*.pdf binary
+*.db binary

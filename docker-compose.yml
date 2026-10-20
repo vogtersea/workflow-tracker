@@ -1,0 +1,42 @@
+services:
+  workflow-tracker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: workflow-tracker:1.0.0
+    container_name: workflow-tracker
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3080}:3080"
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      DATA_DIR: /app/data
+      # 首次启动自动创建管理员。
+      # 仅在数据库为空（首次部署）时生效；之后修改此处不会影响已有账号，
+      # 请登录后在「系统设置 → 修改密码」中修改。
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123456}
+      ADMIN_DISPLAY_NAME: ${ADMIN_DISPLAY_NAME:-系统管理员}
+      # 通过 HTTPS 反向代理访问时设为 1
+      COOKIE_SECURE: ${COOKIE_SECURE:-0}
+      # Obsidian 路径不在此设置。
+      # 挂载后登录系统，在「设置 → Obsidian 知识库」中填写容器内路径（如 /vault）。
+      # 容器只能访问已挂载的目录，挂载点须在下方面 volumes 定义；
+      # 而「使用挂载点下哪个子目录」可在界面随时修改，无需重启。
+    volumes:
+      # 数据库文件落在 NAS 本地目录
+      - ${DATA_PATH:-./data}:/app/data
+      # Obsidian 知识库（可选）。取消注释并改成你的实际路径。
+      # 建议挂载总目录、界面里再选子库，这样换库不必重建容器。
+      # - ${OBSIDIAN_PATH}:/vault:rw
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

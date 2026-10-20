@@ -1,0 +1,226 @@
+# 工作流程跟踪工作台
+
+本地化部署的工作管理与总结报告系统。全部数据存放在本地 SQLite 文件，不依赖任何外部云服务；支持接入任意 OpenAI 兼容大模型，自动生成单项及周期性工作总结报告。
+
+---
+
+## 一、功能概览
+
+### 工作管理
+- 手动添加工作，记录**工作详情**、**完成条件**、**DDL**、优先级、责任人、标签
+- 每项工作可随时追加**进展记录**（含进度百分比），形成完整时间线
+- 未完成工作按「今日到期 / 3 日内到期 / 已逾期」三类分级提醒
+- 已完成工作支持**销号**（标记完成）与**归档**，归档后仍保留全部数据，可随时恢复
+- 周期工作模板：定义「每周」「每月」固定动作，到期前自动生成工作实例
+
+### 提醒机制
+- **站内待办中心**：首页重点待办、侧边栏红点、顶部导航角标
+- **浏览器桌面通知**：页面打开时对逾期项推送系统通知
+- **Webhook 推送**：支持企业微信 / 钉钉 / 飞书群机器人及通用 JSON
+
+### 大模型报告
+- 报告范围：**单项工作**、**周**、**月**、**半年**、**年**、**自定义区间**
+- 生成策略：先由系统计算确定性统计（完成率、逾期数、标签分布等），再连同工作明细与进展记录交给模型，提示词强制要求「不得编造材料中未出现的事实与数字」
+- 导出格式：**Word**（严格套用公文格式）、**Markdown**（带 Obsidian frontmatter）、**PDF**（浏览器打印）
+- 生成结果自动入库，正文可在页面内二次编辑后再导出
+
+### Obsidian 集成
+- **只读检索**：挂载 vault 目录，按关键词检索笔记标题与正文，供报告素材参考
+- **报告写回**：将生成的报告写为带 frontmatter 的 `.md`，落入指定子目录，同名文件自动加序号，绝不覆盖
+
+### 多用户与权限
+- 两级角色：**管理员**（管理用户、查看全部工作、修改系统配置）、**成员**（仅查看与操作分配给自己的工作）
+- 密码 scrypt 加盐哈希，会话存 cookie + 服务端校验表，支持强制下线
+
+---
+
+## 二、技术架构
+
+| 维度 | 选型 | 说明 |
+|---|---|---|
+| 框架 | Next.js 15（App Router） | 前后端一体，单进程单端口 |
+| 运行时 | Node.js 24 Alpine | 内置 `node:sqlite`，**无原生编译依赖** |
+| 数据库 | SQLite（WAL 模式） | 文件落 NAS 本地目录，支持热备 |
+| 样式 | 原生 CSS 变量 | 宫墙红 + 鎏金配色，无 UI 框架依赖 |
+| 文档导出 | docx 库 | 按公文规范生成，页边距/字体/行距全部写死 |
+| 镜像 | 多阶段构建 | 运行镜像约 200MB，内存占用约 150–250MB |
+
+> **关于 SQLite 的选型说明**
+> 未采用 `better-sqlite3`，原因是它需要本地编译原生模块，在 Alpine 与 ARM 平台均需额外工具链，且镜像体积增加约 30MB。
+> Node 22.5 起内置 `node:sqlite`，Node 24 已稳定，API 足够覆盖本项目全部需求（预编译语句、事务、WAL），因此改用它，实现**零编译依赖、x86/ARM 通用**。
+
+---
+
+## 三、NAS 部署（某品牌 your-nas-model）
+
+### 前置条件
+- 目标机器为 x86_64 架构，Linux 内核，已装 Docker
+- 已安装 Docker 与 Docker Compose 插件
+
+### 部署步骤
+
+**1. 克隆到 NAS**
+
+```bash
+cd /volume1/docker
+git clone https://github.com/你的用户名/workflow-tracker.git
+cd workflow-tracker
+```
+
+若 NAS 上没有 git，也可在电脑上下载 ZIP 后通过文件管理上传解压。
+
+**2. 一键部署**
+
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
+
+脚本会自动完成：生成 `.env`（含随机管理员密码）→ 建数据目录 → 构建镜像 → 启动 → 等健康检查 → 打印访问地址和初始密码。
+
+首次构建约 3–6 分钟。
+
+**3. 手动部署（若不使用脚本）**
+
+```bash
+cp .env.example .env
+# 编辑 .env，至少改 ADMIN_PASSWORD 和 DATA_PATH
+docker compose up -d --build
+```
+
+**4. 访问**
+
+浏览器打开 `http://NAS的IP:3080`，用脚本输出的管理员账号登录。
+
+**5. 首次登录后的配置**
+
+| 顺序 | 位置 | 动作 |
+|---|---|---|
+| 1 | 系统设置 → 修改密码 | 改掉初始密码 |
+| 2 | 系统设置 → 大模型接入 | 填接口地址、API Key、模型名，点「测试连接」 |
+| 3 | 系统设置 → Obsidian 知识库 | 填 `/vault`，点「检测路径」 |
+| 4 | 用户管理 | 为同事创建账号 |
+
+**6. 配置项什么时候改**
+
+| 配置 | 部署后可否在界面改 | 说明 |
+|---|---|---|
+| Obsidian 路径 | 可以 | 界面设置优先于环境变量，改完即生效，无需重启 |
+| 知识库挂载点 | 不可以 | 容器只能访问已挂载目录，须改 compose 后 `docker compose up -d` |
+| 账号密码 | 可以 | 系统设置 → 修改密码；也可用 `./deploy.sh reset-pwd 用户名 新密码` |
+| `ADMIN_PASSWORD` | 仅首次生效 | 数据库已存在账号时改环境变量无效 |
+| 数据目录 | 不可以 | 改 `DATA_PATH` 等于换新库，旧数据需手工迁移 |
+| 端口 | 改 compose 后重启 | 改 `APP_PORT` 后 `docker compose up -d` |
+
+---
+
+## 四、数据存储与备份
+
+数据库文件位置：`.env` 中 `DATA_PATH` 指定的目录下的 `workflow.db`（默认 `./data`）。
+
+**备份**：
+
+```bash
+./deploy.sh backup
+```
+
+脚本会打包整个 data 目录为 `backup-YYYYMMDD-HHMMSS.tar.gz`。
+
+WAL 模式下有 `workflow.db`、`workflow.db-wal`、`workflow.db-shm` 三个文件，**必须一起备份**，否则可能丢失最近事务。脚本已包含全部三个文件。
+
+**恢复**：`docker compose down` → 解压备份覆盖 data 目录 → `docker compose up -d`。
+
+---
+
+## 五、大模型接入示例
+
+### DeepSeek
+
+| 配置项 | 值 |
+|---|---|
+| 接口地址 | `https://api.deepseek.com` |
+| 模型名称 | `deepseek-chat` |
+| 温度 | 0.4 |
+
+### 通义千问（DashScope 兼容模式）
+
+| 配置项 | 值 |
+|---|---|
+| 接口地址 | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
+| 模型名称 | `qwen-plus` 或 `qwen-max` |
+
+### 本地 Ollama（完全离线）
+
+| 配置项 | 值 |
+|---|---|
+| 接口地址 | `http://NAS的IP:11434/v1` |
+| API Key | 随意填（Ollama 不校验） |
+| 模型名称 | `qwen2.5:7b` 等已拉取的模型 |
+
+> 若模型与工作台不在同一容器网络，需用 NAS 的局域网 IP，不能用 `127.0.0.1`。
+> 低功耗 CPU 跑 7B 级模型推理速度约 3–6 token/s，生成一份 1500 字报告约需 3–6 分钟，建议优先用云端接口。
+
+---
+
+## 六、本地开发
+
+```bash
+npm install
+npm run dev      # http://localhost:3080
+npm run build    # 生产构建
+npm start        # 启动生产服务
+```
+
+开发环境变量（可选，写在 `.env.local`）：
+
+```bash
+DATA_DIR=./data
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123456
+VAULT_DIR=/path/to/your-vault
+```
+
+---
+
+## 七、目录结构
+
+```
+src/
+├── app/
+│   ├── (app)/              # 需登录的页面
+│   │   ├── page.tsx        # 工作台概览
+│   │   ├── tasks/          # 工作列表与详情
+│   │   ├── reports/        # 报告列表、生成、详情
+│   │   ├── templates/      # 周期模板
+│   │   ├── notifications/  # 待办提醒
+│   │   ├── calendar/       # 日历视图
+│   │   ├── tags/           # 标签管理
+│   │   ├── obsidian/       # 知识库浏览
+│   │   └── settings/       # 系统设置、用户管理
+│   ├── api/                # 全部后端接口
+│   └── login/              # 登录页
+├── components/             # Shell 布局、通用 UI
+├── lib/
+│   ├── db.ts               # 数据库连接与建表
+│   ├── auth.ts             # 密码、会话、权限
+│   ├── tasks.ts            # 工作查询与写入
+│   ├── templates.ts        # 周期模板生成
+│   ├── reminders.ts        # 提醒扫描与推送
+│   ├── reports.ts          # 报告生成（提示词在此）
+│   ├── llm.ts              # OpenAI 兼容客户端
+│   ├── export.ts           # Word / Markdown / 打印 HTML
+│   ├── obsidian.ts         # 知识库检索与写回
+│   └── date.ts             # 日期与周月年区间
+└── middleware.ts           # 路由守卫
+```
+
+---
+
+## 八、注意事项
+
+1. **首次启动后必须修改默认管理员密码**，尤其是在端口可能暴露的情况下。
+2. **不要删除 `.workbuddy` 目录**（若存在），其中为项目相关数据。
+3. 端口冲突时，改 `docker-compose.yml` 中 `ports` 左侧值，如 `3081:3080`。
+4. 容器以 `node` 用户（uid 1000）运行，挂载的 data 目录需可写；若 NAS 权限严格，可执行 `chown -R 1000:1000 data`。
+5. 报告生成依赖大模型在线，网络不通时会在页面明确报错，不会静默失败。
+6. `outputs/` 目录为交付物输出位置，已在 `.gitignore` 与 `.dockerignore` 中排除。

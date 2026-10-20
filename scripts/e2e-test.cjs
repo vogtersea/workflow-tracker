@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 
 const BASE = 'http://127.0.0.1:3080';
+const PASS = process.env.SEED_PASS || 'admin123456';
 let cookie = '';
 
 function parseCookie(res) {
@@ -46,7 +47,7 @@ function check(name, cond, detail = '') {
   console.log('\n========== 一、认证 ==========');
   const login = await api('/api/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ username: 'admin', password: 'Su@2026Niuyan' })
+    body: JSON.stringify({ username: 'admin', password: PASS })
   });
   check('管理员登录', login.json?.ok === true, login.json?.data?.display_name);
   check('会话 Cookie 已下发', cookie.length > 20);
@@ -63,7 +64,7 @@ function check(name, cond, detail = '') {
   console.log('\n========== 二、标签与工作 ==========');
   const tagRes = await api('/api/tags', {
     method: 'POST',
-    body: JSON.stringify({ name: '中心组学习', color: '#a16207' })
+    body: JSON.stringify({ name: '项目推进', color: '#a16207' })
   });
   check('创建标签', tagRes.json?.ok === true);
   const tagId = tagRes.json?.data?.id;
@@ -77,9 +78,9 @@ function check(name, cond, detail = '') {
     const created = await api('/api/tasks', {
       method: 'POST',
       body: JSON.stringify({
-        title: '起草中心组理论学习发言稿',
-        detail: '围绕党建与业务融合主题撰写发言材料',
-        done_criteria: '形成3000字发言稿并经分管领导审定',
+        title: '起草季度工作总结材料',
+        detail: '围绕年度任务完成情况撰写总结材料',
+        done_criteria: '形成3000字总结材料并经负责人审定',
         due_date: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
         priority: 'high',
         tag_ids: tagId ? [tagId] : []
@@ -159,7 +160,7 @@ function check(name, cond, detail = '') {
 
   const single = await api('/api/reports', {
     method: 'POST',
-    body: JSON.stringify({ scope: 'single', taskId, taskTitle: '起草中心组理论学习发言稿' })
+    body: JSON.stringify({ scope: 'single', taskId, taskTitle: '起草季度工作总结材料' })
   });
   check('单工作报告生成', single.json?.ok === true, `ID ${single.json?.data?.id}`);
   const singleContent = single.json?.data?.content || '';
@@ -259,9 +260,9 @@ function check(name, cond, detail = '') {
   const tpl = await api('/api/templates', {
     method: 'POST',
     body: JSON.stringify({
-      title: '每周网讯稿件报送',
-      detail: '每周五前报送网讯稿件',
-      done_criteria: '完成稿件报送并获采用',
+      title: '每周进度周报报送',
+      detail: '每周五前报送进度周报',
+      done_criteria: '完成周报报送并归档',
       cadence: 'weekly',
       weekday: 5,
       priority: 'normal'

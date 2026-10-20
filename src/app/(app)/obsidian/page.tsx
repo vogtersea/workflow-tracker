@@ -114,7 +114,7 @@ export default function ObsidianPage() {
             <br />
             &nbsp;&nbsp;- /volume1/docker/workflow/data:/app/data
             <br />
-            &nbsp;&nbsp;- /vault/your-vault:/vault:ro
+            &nbsp;&nbsp;- /path/to/your/vault:/vault:ro
           </div>
           <div style={{ marginTop: 12, fontSize: 12, color: 'var(--ink-500)', lineHeight: 1.9 }}>
             挂载后，系统可对笔记做关键词检索，为报告生成提供素材参考；报告也可写回指定子目录（需读写权限）。

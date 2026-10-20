@@ -266,7 +266,7 @@ export default function NewReportPage() {
               <textarea
                 className="textarea"
                 style={{ minHeight: 64 }}
-                placeholder="如：侧重党建与业务融合，突出区域重点工作，控制在1500字以内"
+                placeholder="如：侧重团队协作与效率提升，控制在1500字以内"
                 value={extra}
                 onChange={(e) => setExtra(e.target.value)}
               />

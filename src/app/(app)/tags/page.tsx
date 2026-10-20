@@ -94,7 +94,7 @@ export default function TagsPage() {
             <label className="field-label">标签名称</label>
             <input
               className="input"
-              placeholder="如：党课材料、中心组学习、监管汇报"
+              placeholder="如：日常事务、项目推进、材料撰写"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && create()}

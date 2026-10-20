@@ -44,7 +44,7 @@ const server = http.createServer((req, res) => {
       console.log('[mock] user prompt length:', userMsg.length);
       console.log('[mock] contains 统计事实:', userMsg.includes('统计事实'));
       console.log('[mock] contains 工作明细:', userMsg.includes('工作明细'));
-      console.log('[mock] task title found:', /三季度监管数据报送材料/.test(userMsg));
+      console.log('[mock] task title found:', /季度工作总结/.test(userMsg));
 
       // 回显关键信息，便于断言
       const reply = `# 测试报告
@@ -55,7 +55,7 @@ const server = http.createServer((req, res) => {
 
 ## 二、重点工作推进情况
 
-已完成「撰写三季度监管数据报送材料」的阶段性推进，形成初稿并完成初步审核。
+已完成「起草季度工作总结材料」的阶段性推进，形成初稿并完成初步审核。
 
 ## 三、存在问题与不足
 
@@ -66,7 +66,7 @@ const server = http.createServer((req, res) => {
 按要求完成材料报送并归档留存。
 
 ---
-MOCK_ECHO:${userMsg.includes('统计事实')}:${/三季度监管数据报送材料/.test(userMsg)}`;
+MOCK_ECHO:${userMsg.includes('统计事实')}:${/季度工作总结/.test(userMsg)}`;
 
       if (payload.stream) {
         res.writeHead(200, {

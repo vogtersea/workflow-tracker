@@ -1,5 +1,16 @@
-/** Obsidian 集成专项测试 */
+/**
+ * Obsidian 集成专项测试
+ *
+ * 该脚本会在 scripts/.vaulttest/ 下自动生成一个临时知识库夹具（已 gitignore），
+ * 通过设置接口把 vault 路径指向它，测试完成后不修改任何外部目录。
+ * 因此无需准备真实知识库即可直接运行。
+ */
+const fs = require('node:fs');
+const path = require('node:path');
+
 const BASE = 'http://127.0.0.1:3080';
+const PASS = process.env.SEED_PASS || 'admin123456';
+const VAULT = path.join(__dirname, '.vaulttest');
 let cookie = '';
 
 function parseCookie(res) {
@@ -9,8 +20,8 @@ function parseCookie(res) {
   return m ? `wt_session=${m[1]}` : '';
 }
 
-async function api(path, opts = {}) {
-  const res = await fetch(BASE + path, {
+async function api(p, opts = {}) {
+  const res = await fetch(BASE + p, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
@@ -31,11 +42,57 @@ function check(name, cond, detail = '') {
   else { fail++; console.log(`  ✗ ${name}${detail ? ' — ' + detail : ''}`); }
 }
 
+/** 生成临时知识库夹具 */
+function buildFixture() {
+  fs.rmSync(VAULT, { recursive: true, force: true });
+  const files = {
+    '01-工作/项目进度跟踪要点.md': [
+      '---',
+      'title: 项目进度跟踪要点',
+      'tags: [模板]',
+      '---',
+      '',
+      '# 项目进度跟踪要点',
+      '',
+      '进展记录遵循三级审核流程：承办人自校、负责人复核、分管领导审定。',
+      '每项工作按节点登记，做到一事一记。'
+    ].join('\n'),
+    '02-学习/季度总结写作要点.md': [
+      '---',
+      'title: 季度总结写作要点',
+      'tags: [模板]',
+      '---',
+      '',
+      '# 季度总结写作要点',
+      '',
+      '总体情况先列数据，再讲工作推进，最后写问题与打算。',
+      '标题层级按「一、（一）1.」四层组织。'
+    ].join('\n')
+  };
+  for (const [rel, content] of Object.entries(files)) {
+    const full = path.join(VAULT, rel);
+    fs.mkdirSync(path.dirname(full), { recursive: true });
+    fs.writeFileSync(full, content + '\n', 'utf-8');
+  }
+  fs.mkdirSync(path.join(VAULT, '99-收件箱'), { recursive: true });
+}
+
 (async () => {
   await api('/api/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ username: 'admin', password: 'admin123456' })
+    body: JSON.stringify({ username: 'admin', password: PASS })
   });
+
+  // 指向临时夹具，避免读写真实知识库
+  buildFixture();
+  const cfg = await api('/api/settings', {
+    method: 'POST',
+    body: JSON.stringify({
+      section: 'obsidian',
+      obsidian: { dir: VAULT, writeback: '99-收件箱' }
+    })
+  });
+  check('配置指向临时测试库', cfg.json?.ok === true, VAULT);
 
   console.log('\n========== Obsidian 集成测试 ==========');
 
@@ -44,17 +101,17 @@ function check(name, cond, detail = '') {
   check('识别到子目录', (tree.json?.data?.folders || []).length >= 2,
     (tree.json?.data?.folders || []).map((f) => `${f.name}(${f.count})`).join(', '));
 
-  const s1 = await api('/api/obsidian?mode=search&q=' + encodeURIComponent('党课'));
-  check('按标题检索"党课"', (s1.json?.data || []).length > 0,
+  const s1 = await api('/api/obsidian?mode=search&q=' + encodeURIComponent('季度总结'));
+  check('按标题检索「季度总结」', (s1.json?.data || []).length > 0,
     (s1.json?.data || []).map((n) => n.title).join(', '));
 
   const s2 = await api('/api/obsidian?mode=search&q=' + encodeURIComponent('三级审核'));
-  check('按正文检索"三级审核"', (s2.json?.data || []).length > 0,
+  check('按正文检索「三级审核」', (s2.json?.data || []).length > 0,
     (s2.json?.data || [])[0]?.title);
   check('返回上下文摘要', Boolean((s2.json?.data || [])[0]?.excerpt),
     ((s2.json?.data || [])[0]?.excerpt || '').slice(0, 40));
 
-  const read = await api('/api/obsidian?mode=read&path=' + encodeURIComponent('01-工作/监管报送要点.md'));
+  const read = await api('/api/obsidian?mode=read&path=' + encodeURIComponent('01-工作/项目进度跟踪要点.md'));
   check('读取笔记正文', read.json?.ok === true && read.json?.data?.content?.includes('三级审核'));
 
   // 路径穿越防护
@@ -83,8 +140,12 @@ function check(name, cond, detail = '') {
     w2.json?.ok === true && w2.json?.data?.path !== w1.json?.data?.path,
     `第一次 ${w1.json?.data?.path} / 第二次 ${w2.json?.data?.path}`);
 
+  const written = w1.json?.data?.path ? fs.readFileSync(path.join(VAULT, w1.json.data.path), 'utf-8') : '';
+  check('frontmatter 首标签为 WorkBuddy', /tags:\s*\["WorkBuddy"/.test(written));
+
   console.log(`\n${'='.repeat(50)}`);
   console.log(`Obsidian 测试：通过 ${pass} 项，失败 ${fail} 项`);
+  console.log(`临时测试库：${VAULT}（可安全删除）`);
   console.log(`${'='.repeat(50)}\n`);
   process.exit(fail > 0 ? 1 : 0);
 })().catch((e) => { console.error('异常:', e); process.exit(1); });

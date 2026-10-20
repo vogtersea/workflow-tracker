@@ -5,6 +5,10 @@
  *  3. ADMIN_PASSWORD 只在空库时生效一次
  */
 const BASE = 'http://127.0.0.1:3080';
+// 当前管理员密码；若部署时改过，运行时用 ADMIN_PASS=<密码> 传入
+const ADMIN_PASS = process.env.ADMIN_PASS || 'admin123456';
+// 一个与当前密码不同的取值，用于验证「环境变量密码不再生效」
+const STALE_PASS = process.env.STALE_PASS || 'stale-env-password';
 let cookie = '';
 
 function pickCookie(res) {
@@ -39,7 +43,7 @@ const check = (n, c, d = '') => {
   // 管理员登录
   const login = await api('/api/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ username: 'admin', password: 'Su@2026Niuyan' })
+    body: JSON.stringify({ username: 'admin', password: ADMIN_PASS })
   });
   if (!login.json?.ok) {
     console.error('登录失败:', login.json?.error);
@@ -161,18 +165,18 @@ const check = (n, c, d = '') => {
 
   console.log('\n========== 三、环境变量密码只在空库生效 ==========');
   cookie = adminCookie;
-  // 用错误的 ADMIN_PASSWORD 尝试登录（compose 里是 admin123456，实际已改成 Su@2026Niuyan）
+  // 用一个并非当前密码的值尝试登录：账号已建好后，ADMIN_PASSWORD 不应再起作用
   const envPwd = await api('/api/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ username: 'admin', password: 'admin123456' })
+    body: JSON.stringify({ username: 'admin', password: STALE_PASS })
   });
-  check('环境变量中的默认密码无法登录（已建账号不受影响）',
+  check('非当前密码无法登录（已建账号不受 ADMIN_PASSWORD 影响）',
     envPwd.status === 401, envPwd.json?.error);
 
   cookie = '';
   const realPwd = await api('/api/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ username: 'admin', password: 'Su@2026Niuyan' })
+    body: JSON.stringify({ username: 'admin', password: ADMIN_PASS })
   });
   check('实际密码仍可登录', realPwd.json?.ok === true);
 

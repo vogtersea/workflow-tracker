@@ -463,7 +463,7 @@ export default function SettingsPage() {
                 className="input"
                 value={obsidian.dir}
                 onChange={(e) => setObsidian({ ...obsidian, dir: e.target.value })}
-                placeholder="/vault 或 /vault/your-vault"
+                placeholder="/vault 或 /vault/my-notes"
                 disabled={!isAdmin}
               />
               <div className="field-hint">

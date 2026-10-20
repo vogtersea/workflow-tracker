@@ -237,7 +237,7 @@ export default function TemplatesPage() {
               className="input"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="如：每周网讯稿件报送"
+              placeholder="如：每周周报报送"
             />
           </div>
           <div className="field">

@@ -177,7 +177,7 @@ npm start        # 启动生产服务
 DATA_DIR=./data
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin123456
-VAULT_DIR=/path/to/your-vault
+VAULT_DIR=/path/to/your/vault       # Obsidian 知识库根目录，也可登录后在界面上改
 ```
 
 ---

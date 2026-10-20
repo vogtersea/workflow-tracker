@@ -1,5 +1,19 @@
-/** 真实公文场景数据填充：用于验证报告生成与界面展示效果 */
-const BASE = 'http://127.0.0.1:3080';
+/**
+ * 演示数据填充脚本（通用示例，不含任何真实业务信息）
+ *
+ * 用途：为系统填充一批示例工作项，便于查看界面与报告生成效果。
+ * 使用：确保服务已启动，然后执行：
+ *   SEED_PASS=你的密码 node scripts/seed-demo.cjs
+ *
+ * 环境变量：
+ *   BASE_URL   服务地址，默认 http://127.0.0.1:3080
+ *   SEED_USER  登录用户名，默认 admin
+ *   SEED_PASS  登录密码（必须提供）
+ */
+const BASE = process.env.BASE_URL || 'http://127.0.0.1:3080';
+const USER = process.env.SEED_USER || 'admin';
+const PASS = process.env.SEED_PASS || '';
+
 let cookie = '';
 
 async function api(path, opts = {}) {
@@ -28,20 +42,29 @@ const d = (offset) => {
 };
 
 (async () => {
+  if (!PASS) {
+    console.error('请通过环境变量 SEED_PASS 提供登录密码，例如：');
+    console.error('  SEED_PASS=你的密码 node scripts/seed-demo.cjs');
+    process.exit(1);
+  }
+
   const login = await api('/api/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ username: 'admin', password: 'Su@2026Niuyan' })
+    body: JSON.stringify({ username: USER, password: PASS })
   });
-  console.log('登录:', login.json?.ok ? '成功' : '失败');
-  if (!login.json?.ok) return;
+  if (!login.json?.ok) {
+    console.error('登录失败：', login.json?.error);
+    process.exit(1);
+  }
+  console.log('登录成功');
 
-  // 标签
+  // ---------- 标签 ----------
   const tagDefs = [
-    ['党课材料', '#b91c1c'],
-    ['中心组学习', '#a16207'],
-    ['监管汇报', '#c2410c'],
-    ['网讯宣传', '#15803d'],
-    ['承接工作', '#1d4ed8']
+    ['日常事务', '#a16207'],
+    ['项目推进', '#b91c1c'],
+    ['材料撰写', '#1d4ed8'],
+    ['沟通协调', '#15803d'],
+    ['学习提升', '#6d28d9']
   ];
   const tagIds = {};
   for (const [name, color] of tagDefs) {
@@ -49,81 +72,82 @@ const d = (offset) => {
       method: 'POST',
       body: JSON.stringify({ name, color })
     });
-    tagIds[name] = r.json?.data?.id;
+    if (r.json?.ok) {
+      tagIds[name] = r.json.data.id;
+    } else {
+      const list = await api('/api/tags');
+      const hit = (list.json?.data || []).find((t) => t.name === name);
+      if (hit) tagIds[name] = hit.id;
+    }
   }
-  console.log('标签:', Object.keys(tagIds).join('、'));
+  console.log('标签：', Object.keys(tagIds).join('、'));
 
-  // 工作项（含贴近真实的分工与描述）
+  // ---------- 工作项 ----------
   const tasks = [
     {
-      title: '撰写"树立和践行正确政绩观"专题党课讲稿',
-      detail:
-        '按照党委统一部署，为分管条线党员干部讲授专题党课。需结合中央关于树立正确政绩观的部署要求，联系服务区域发展大局的实际，讲清"为谁创造业绩、创造什么样的业绩、怎样创造业绩"。',
-      done_criteria:
-        '形成6000字左右讲稿一份，配套PPT不少于20页，经分管行领导审定后报党委组织部备案',
+      title: '季度工作总结材料撰写',
+      detail: '汇总本季度各项工作推进情况，梳理关键成果与存在问题，形成总结材料报部门负责人审阅。',
+      done_criteria: '形成3000字以上总结材料，经负责人审阅后定稿归档',
       due_date: d(3),
       priority: 'urgent',
-      tags: ['党课材料', '中心组学习'],
+      tags: ['材料撰写'],
       progress: [
-        ['完成中央相关论述与总行文件梳理，列出参考文献12篇', 20],
-        ['拟定讲稿三级提纲并报分管领导审阅，要求增加本地案例', 40],
-        ['补充某片区片区网点服务、承接企业融资两个案例，完成初稿5000字', 70]
+        ['完成各条线情况收集，列出材料框架', 25],
+        ['框架确认，补充关键数据与案例', 50],
+        ['完成初稿约5000字，送审', 75]
       ]
     },
     {
-      title: '三季度监管数据报送材料汇总',
-      detail:
-        '按金融监管总局河北监管局要求，汇总三季度各项业务数据并撰写分析说明，重点说明服务实体经济与风险防控情况。',
-      done_criteria: '完成数据核对并经三级审核，按期报送监管局，留存报送回执',
+      title: '月度数据报表核对与报送',
+      detail: '核对本月各项数据口径，编制报表并按要求报送。',
+      done_criteria: '数据经复核无误，按期完成报送并留存回执',
       due_date: d(-2),
       priority: 'urgent',
-      tags: ['监管汇报'],
+      tags: ['日常事务'],
       progress: [
-        ['完成基础数据提取，正在核对口径差异', 30],
-        ['数据核对完成，初稿已形成，送部门负责人初审', 60]
+        ['完成基础数据提取，正在核对差异', 30],
+        ['数据核对完成，初稿已形成，送复核', 60]
       ]
     },
     {
-      title: '中心组理论学习第八次集体学习发言材料',
-      detail:
-        '围绕"学习习近平总书记关于党的建设的重要思想"主题准备发言材料，结合办公室、人力资源部、个人金融业务部工作实际谈体会。',
-      done_criteria: '形成3000字发言稿，会上作15分钟发言',
+      title: '内部培训方案设计',
+      detail: '针对团队能力短板设计下季度培训方案，含课程设置、时间安排与考核方式。',
+      done_criteria: '方案通过评审，明确讲师与排期',
       due_date: d(6),
       priority: 'high',
-      tags: ['中心组学习'],
-      progress: [['完成理论原著与辅导读本研读，列出四个问题清单', 25]]
+      tags: ['学习提升'],
+      progress: [['完成需求调研，梳理出三个重点方向', 25]]
     },
     {
-      title: '区域金融服务专报（第12期）',
-      detail:
-        '梳理本期承接央企及二三级子公司落地进展、配套金融服务举措与典型案例，形成专报报送新区管委会。',
-      done_criteria: '专报形成并经行长办公会审定，报新区管委会及总行相关部门',
+      title: '重点项目进度跟踪专报',
+      detail: '梳理重点项目本期进展、存在问题与下阶段安排，形成专报供决策参考。',
+      done_criteria: '专报完成并经评审，报分管负责人及相关部门',
       due_date: d(9),
       priority: 'high',
-      tags: ['承接工作', '监管汇报'],
-      progress: [['完成本期承接企业名单更新，正在收集典型案例', 35]]
+      tags: ['项目推进'],
+      progress: [['完成项目清单更新，正在收集典型案例', 35]]
     },
     {
-      title: '内宣网讯稿件撰写与投稿',
-      detail: '围绕分行服务区域建设成果，撰写内宣网讯稿并向上级行投稿。',
-      done_criteria: '完成1500字网讯稿1篇并成功投稿，力争采用',
+      title: '对外宣传稿件撰写与投稿',
+      detail: '围绕本季度重点工作成效撰写宣传稿件，完成后对外投稿。',
+      done_criteria: '完成1500字稿件1篇并完成投稿',
       due_date: d(-8),
       priority: 'normal',
-      tags: ['网讯宣传'],
+      tags: ['材料撰写'],
       progress: [
-        ['完成素材收集与采访', 40],
-        ['稿件完成并投稿，等待采用通知', 100]
+        ['完成素材收集与访谈', 40],
+        ['稿件完成并投出，等待反馈', 100]
       ],
       status: 'done'
     },
     {
-      title: '办公室党支部主题党日活动方案',
-      detail: '策划第四季度主题党日活动方案，含活动主题、形式、时间地点与经费预算。',
-      done_criteria: '方案获支部委员会通过并报党委组织部备案',
+      title: '部门季度例会筹备方案',
+      detail: '策划季度例会方案，含议程、参会范围、材料准备分工。',
+      done_criteria: '方案经确认，议程与分工明确到人',
       due_date: d(-15),
       priority: 'normal',
-      tags: ['中心组学习'],
-      progress: [['初稿完成，已提交支部委员会', 80]],
+      tags: ['沟通协调'],
+      progress: [['初稿完成，已提交负责人', 80]],
       status: 'archived'
     }
   ];
@@ -138,13 +162,12 @@ const d = (offset) => {
         done_criteria: t.done_criteria,
         due_date: t.due_date,
         priority: t.priority,
-        tag_ids: t.tags.map((x) => tagIds[x]).filter(Boolean),
-        owner_id: 1
+        tag_ids: t.tags.map((x) => tagIds[x]).filter(Boolean)
       })
     });
     const id = r.json?.data?.id;
     if (!id) {
-      console.log('创建工作失败:', t.title, r.json?.error);
+      console.log('创建失败：', t.title, r.json?.error);
       continue;
     }
     created.push({ id, title: t.title });
@@ -161,23 +184,28 @@ const d = (offset) => {
       await api(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'done' }) });
       await api(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'archived' }) });
     }
-    console.log(`已创建: ${t.title} (ID ${id}, ${t.progress.length} 条进展)`);
+    console.log(`已创建：${t.title}（ID ${id}，${t.progress.length} 条进展）`);
   }
 
-  // 周期模板
+  // ---------- 周期模板 ----------
   const tpl = await api('/api/templates', {
     method: 'POST',
     body: JSON.stringify({
-      title: '每周网讯稿件报送',
-      detail: '每周整理本周工作动态，撰写网讯稿并向上级行投稿。',
-      done_criteria: '完成网讯稿1篇并完成投稿',
+      title: '每周周报报送',
+      detail: '每周整理本周工作动态，形成周报并报送。',
+      done_criteria: '完成周报1份并按时报送',
       cadence: 'weekly',
       weekday: 5,
-      priority: 'normal',
-      owner_id: 1
+      priority: 'normal'
     })
   });
-  console.log('周期模板:', tpl.json?.ok ? `已创建（生成 ${tpl.json.data.generated} 个实例）` : tpl.json?.error);
+  console.log(
+    '周期模板：',
+    tpl.json?.ok ? `已创建（生成 ${tpl.json.data.generated} 个实例）` : tpl.json?.error
+  );
 
-  console.log('\n数据准备完成，共', created.length, '项工作');
-})();
+  console.log(`\n数据准备完成，共 ${created.length} 项工作`);
+})().catch((e) => {
+  console.error('执行异常：', e);
+  process.exit(1);
+});

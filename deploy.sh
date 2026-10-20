@@ -69,6 +69,9 @@ case "${1:-up}" in
     if [ "$(id -u)" = "0" ]; then
       chown -R 1000:1000 "${DATA_PATH:-./data}" 2>/dev/null || true
     fi
+    # 部分品牌 NAS 的 ACL 层对容器进程只认 other 权限位：即便宿主机同 uid 可写，
+    # 容器内仍会报 "unable to open database file"。放开 other 位后正常。
+    chmod -R 777 "${DATA_PATH:-./data}" 2>/dev/null || true
 
     echo "==> 构建镜像（首次约 3-6 分钟）"
     $DC build
@@ -101,7 +104,10 @@ case "${1:-up}" in
       echo "  3. 系统设置 → Obsidian 知识库 → 填写 /vault → 检测路径"
       echo "  4. 用户管理 → 为同事创建账号"
     else
-      echo "启动异常，最近日志："
+      echo "启动异常，健康接口返回："
+      docker exec "$APP_NAME" curl -s http://127.0.0.1:3080/api/health 2>/dev/null || true
+      echo ""
+      echo "最近日志："
       $DC logs --tail=40
       exit 1
     fi

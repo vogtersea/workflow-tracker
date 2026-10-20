@@ -112,6 +112,19 @@ docker compose up -d --build
 | 数据目录 | 不可以 | 改 `DATA_PATH` 等于换新库，旧数据需手工迁移 |
 | 端口 | 改 compose 后重启 | 改 `APP_PORT` 后 `docker compose up -d` |
 
+**挂载 Obsidian 知识库**
+
+`docker-compose.yml` 里对应的 volume 默认是注释掉的。不想改动仓库原文件时，新建同目录的 `docker-compose.override.yml`，compose 会自动合并：
+
+```yaml
+services:
+  workflow-tracker:
+    volumes:
+      - /volume2/你的路径/个人知识库:/vault:rw
+```
+
+然后 `docker compose up -d` 使其生效。**建议挂载知识库的父目录**，登录后在界面里选择具体子库，这样换库不必重建容器。只读检索用 `:ro` 即可；需要「报告写回」则必须是 `:rw`。
+
 ---
 
 ## 四、数据存储与备份
@@ -222,5 +235,7 @@ src/
 2. **不要删除 `.workbuddy` 目录**（若存在），其中为项目相关数据。
 3. 端口冲突时，改 `docker-compose.yml` 中 `ports` 左侧值，如 `3081:3080`。
 4. 容器以 `node` 用户（uid 1000）运行，挂载的 data 目录需可写；若 NAS 权限严格，可执行 `chown -R 1000:1000 data`。
+   **部分品牌 NAS 需额外 `chmod -R 777 data`**：其 ACL 层对容器进程只认 other 权限位，即使宿主机同 uid 可写，容器内仍会报 `unable to open database file`（健康检查返回 503）。`deploy.sh` 已内置该步骤。
 5. 报告生成依赖大模型在线，网络不通时会在页面明确报错，不会静默失败。
 6. `outputs/` 目录为交付物输出位置，已在 `.gitignore` 与 `.dockerignore` 中排除。
+7. 若 Docker 侧配置了代理（`/etc/docker/daemon.json` 的 `proxies`），镜像拉取会强制走该代理；代理不可用时表现为 `Get "https://registry-1.docker.io/v2/": EOF`。此时可先修好代理，或改为从国内镜像源拉取后 `docker load`。注意 `docker build` 内部的 `npm`／`apk` 走容器网络，不受该代理影响。

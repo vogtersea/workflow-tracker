@@ -69,7 +69,48 @@
 
 ---
 
-## 三、NAS 部署（某品牌 your-nas-model）
+## 三、Windows 原生运行（免 Docker）
+
+不装 Docker、不装 Node、不联网也能跑。产物是自包含目录，内置 Node 运行时与全部依赖，数据落在本机 SQLite 文件。
+
+### 使用方式
+
+| 形态 | 获取 | 使用 |
+|---|---|---|
+| 便携版 | 解压 `工作流程跟踪工作台-win-x64-1.0.0.zip` | 双击 `启动工作台.cmd` |
+| 安装版 | 运行 `WorkflowTracker-Setup-1.0.0.exe` | 开始菜单/桌面双击，可在「设置 → 应用」卸载 |
+
+首次启动自动生成管理员密码，显示在窗口并留存到 `data\初始密码.txt`，登录后请立即改密。关闭启动窗口即停止服务；找不到窗口时用 `停止工作台.cmd`。
+
+### 目录结构
+
+```
+工作流程跟踪工作台-win-x64\
+├─ 启动工作台.cmd / 停止工作台.cmd / 查看状态.cmd
+├─ 安装到本机.cmd          安装到 %LOCALAPPDATA%（免管理员）
+├─ config.json             端口、数据目录、Obsidian 路径等
+├─ app\                    应用本体（Next standalone + 依赖）
+├─ runtime\node.exe        内置 Node 运行时
+├─ launch\                 启动器与安装/卸载脚本
+└─ data\                   唯一数据落点（workflow.db）
+```
+
+### 构建
+
+```bash
+node build/windows/build-windows.mjs                 # 完整构建
+node build/windows/build-windows.mjs --installer     # 顺带生成 Setup.exe（需 Inno Setup 6）
+```
+
+安装包只是一个「外壳」：真正运行的是同一份目录产物，与 Docker 版共用同一套源码和同一个 Next standalone 输出。各项参数、环境变量映射、已知限制见 [`build/windows/README.md`](build/windows/README.md)。
+
+### 与 Docker 版的取舍
+
+- 监听地址：Windows 版默认只绑 `127.0.0.1`（仅本机），Docker 版绑 `0.0.0.0`（容器内网）。
+- 数据位置：Windows 版在程序目录 `data\`，Docker 版挂载到 `/app/data`。两者 schema 相同，三个 `workflow.db*` 文件可直接互拷。
+- 进程管理：Windows 版一个窗口对应一个服务，不做系统托盘，避免引入原生依赖。
+
+## 四、NAS 部署
 
 ### 前置条件
 - 目标机器为 x86_64 架构，Linux 内核，已装 Docker
@@ -145,7 +186,7 @@ services:
 
 ---
 
-## 四、数据存储与备份
+## 五、数据存储与备份
 
 数据库文件位置：`.env` 中 `DATA_PATH` 指定的目录下的 `workflow.db`（默认 `./data`）。
 
@@ -163,7 +204,7 @@ WAL 模式下有 `workflow.db`、`workflow.db-wal`、`workflow.db-shm` 三个文
 
 ---
 
-## 五、大模型接入示例
+## 六、大模型接入示例
 
 ### DeepSeek
 
@@ -193,7 +234,7 @@ WAL 模式下有 `workflow.db`、`workflow.db-wal`、`workflow.db-shm` 三个文
 
 ---
 
-## 六、本地开发
+## 七、本地开发
 
 ```bash
 npm install
@@ -213,7 +254,21 @@ VAULT_DIR=/path/to/your/vault       # Obsidian 知识库根目录，也可登录
 
 ---
 
-## 七、目录结构
+## 八、目录结构
+
+仓库顶层：
+
+```
+├── src/                    # 应用源码（见下）
+├── build/windows/          # Windows 原生版打包：构建脚本、启动器、安装/卸载、Inno Setup 配置
+├── scripts/                # 测试与示例数据脚本
+├── Dockerfile              # Docker 镜像构建
+├── docker-compose.yml      # NAS 部署编排
+├── deploy.sh               # 一键部署脚本
+└── outputs/                # 构建产物（不入库）
+```
+
+源码：
 
 ```
 src/
@@ -247,7 +302,7 @@ src/
 
 ---
 
-## 八、注意事项
+## 九、注意事项
 
 1. **首次启动后必须修改默认管理员密码**，尤其是在端口可能暴露的情况下。
 2. **不要删除 `.workbuddy` 目录**（若存在），其中为项目相关数据。

@@ -1,6 +1,8 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { cookies } from 'next/headers';
-import { getDb } from './db';
+import { getDb, dataDir } from './db';
 import type { NextRequest } from 'next/server';
 
 /**
@@ -52,16 +54,46 @@ export function destroySession(token: string) {
   getDb().prepare('DELETE FROM sessions WHERE token = ?').run(token);
 }
 
-export function sessionCookieOptions(expiresAt: string) {
-  return {
-    name: COOKIE_NAME,
-    value: '',
-    httpOnly: true,
-    sameSite: 'lax' as const,
-    path: '/',
-    secure: false,
-    expires: new Date(expiresAt)
-  };
+/** 首次启动自动创建管理员 — 未显式配置口令时生成随机口令，杜绝默认口令兜底 */
+export function ensureAdminSeed() {
+  const db = getDb();
+  const count = (db.prepare('SELECT COUNT(*) AS c FROM users').get() as { c: number }).c;
+  if (count > 0) return { created: false as const };
+
+  const username = process.env.ADMIN_USERNAME || 'admin';
+  const fromEnv = process.env.ADMIN_PASSWORD;
+  const password = fromEnv || crypto.randomBytes(9).toString('base64url');
+  const display = process.env.ADMIN_DISPLAY_NAME || '系统管理员';
+
+  db.prepare(
+    'INSERT INTO users (username, display_name, password_hash, role) VALUES (?, ?, ?, ?)'
+  ).run(username, display, hashPassword(password), 'admin');
+
+  if (!fromEnv) {
+    // 只落盘到数据目录，不进日志、不进返回值
+    const file = path.join(dataDir(), 'initial-password.txt');
+    try {
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(
+        file,
+        [
+          '工作流程跟踪工作台 —— 首次启动生成的登录信息',
+          '',
+          `username: ${username}`,
+          `password: ${password}`,
+          '',
+          '登录后请立即在「系统设置 → 修改密码」中修改，然后删除本文件。',
+          `created_at: ${new Date().toISOString()}`
+        ].join('\n'),
+        { mode: 0o600 }
+      );
+      console.warn(`[init] 未设置 ADMIN_PASSWORD，已生成随机口令：${file}`);
+    } catch (e) {
+      console.warn('[init] 随机口令落盘失败，请立即用下面的口令登录并修改：', password, e);
+    }
+  }
+
+  return { created: true as const, username };
 }
 
 /** 服务端组件/路由中取当前用户 */
@@ -121,25 +153,6 @@ export async function requireAdmin(): Promise<SessionUser> {
   const u = await requireUser();
   if (u.role !== 'admin') throw new ForbiddenError('仅管理员可执行该操作');
   return u;
-}
-
-/** 首次启动自动创建管理员 */
-export function ensureAdminSeed() {
-  const db = getDb();
-  const count = (db.prepare('SELECT COUNT(*) AS c FROM users').get() as { c: number }).c;
-  if (count > 0) return { created: false };
-
-  const username = process.env.ADMIN_USERNAME || 'admin';
-  const password = process.env.ADMIN_PASSWORD || 'admin123456';
-  const display = process.env.ADMIN_DISPLAY_NAME || '系统管理员';
-
-  const info = db
-    .prepare(
-      'INSERT INTO users (username, display_name, password_hash, role) VALUES (?, ?, ?, ?)'
-    )
-    .run(username, display, hashPassword(password), 'admin');
-
-  return { created: true, username, password, id: Number(info.lastInsertRowid) };
 }
 
 /** 审计日志 */

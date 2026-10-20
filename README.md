@@ -32,9 +32,14 @@
 - 工作列表中以「例行」标记区分；例行工作页可查看每个模板「本周期」的生成与完成状态
 
 ### 提醒机制
+- **后台定时推送**：服务进程内自带提醒循环，每 30 分钟检查一次，到「每日推送时刻」（默认 09:00）自动推送一次；**不需要有人打开页面**
 - **站内待办中心**：首页重点待办、侧边栏红点、顶部导航角标
 - **浏览器桌面通知**：页面打开时对逾期项推送系统通知
 - **Webhook 推送**：支持企业微信 / 钉钉 / 飞书群机器人及通用 JSON
+
+循环在服务收到第一个请求时启动（Docker 健康检查每 30 秒打一次 `/api/health`，桌面版启动时也会轮询，因此几秒内即被唤醒），启动后常驻，与是否有人访问无关。设 `REMINDER_LOOP=0` 可关闭。
+
+推送幂等由两层保证：站内通知靠 `dedupe_key`，推送靠 `remind.lastRunDate`。因此进程内定时、外部触发接口、手工触发同时打进来也不会重复推。需要外部定时器时可以调用 `POST /api/jobs/remind`（须配 `JOB_TOKEN` 并带 `x-job-token` 头），适合多副本或容器休眠场景。
 
 ### 大模型报告
 - 报告范围：**单项工作**、**周**、**月**、**半年**、**年**、**自定义区间**
@@ -245,9 +250,18 @@ WAL 模式下有 `workflow.db`、`workflow.db-wal`、`workflow.db-shm` 三个文
 
 ```bash
 npm install
-npm run dev      # http://localhost:3080
-npm run build    # 生产构建
-npm start        # 启动生产服务
+npm run dev        # http://localhost:3080
+npm run build      # 生产构建（类型检查已开启，类型不干净会直接失败）
+npm start          # 启动生产服务
+
+npm run typecheck  # tsc --noEmit
+npm run test:unit  # 周期推导 42 项断言
+```
+
+改一行文案不想等镜像重建时，用开发编排（源码挂载 + 热更新，不构建镜像）：
+
+```bash
+docker compose -f docker-compose.dev.yml up
 ```
 
 开发环境变量（可选，写在 `.env.local`）：
@@ -255,9 +269,15 @@ npm start        # 启动生产服务
 ```bash
 DATA_DIR=./data
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=admin123456
-VAULT_DIR=/path/to/your/vault       # Obsidian 知识库根目录，也可登录后在界面上改
+ADMIN_PASSWORD=                 # 留空则首次启动生成随机口令，写入 data/initial-password.txt
+VAULT_DIR=/path/to/your/vault   # Obsidian 知识库根目录，也可登录后在界面上改
+REMINDER_LOOP=0                 # 本地开发建议关掉后台定时推送
 ```
+
+### 持续集成
+
+`.github/workflows/ci.yml` 在每次 push / PR 跑：`npm ci` → `typecheck` → `test:unit` → `build`。
+需要活服务的三个脚本（`e2e-test.cjs`、`test-obsidian.cjs`、`test-maintainability.cjs`）不在 CI 里跑，属于部署后的冒烟环节。
 
 ---
 
@@ -311,11 +331,23 @@ src/
 
 ## 九、注意事项
 
-1. **首次启动后必须修改默认管理员密码**，尤其是在端口可能暴露的情况下。
-2. **不要删除 `.workbuddy` 目录**（若存在），其中为项目相关数据。
-3. 端口冲突时，改 `docker-compose.yml` 中 `ports` 左侧值，如 `3081:3080`。
-4. 容器以 `node` 用户（uid 1000）运行，挂载的 data 目录需可写；若 NAS 权限严格，可执行 `chown -R 1000:1000 data`。
+1. **首次启动后必须修改初始管理员密码**，尤其是在端口可能暴露的情况下。
+   未设置 `ADMIN_PASSWORD` 时系统会生成随机口令并写入 `data/initial-password.txt`（权限 0600），不再有 `admin123456` 这类默认口令兜底。登录并改密后请删除该文件。
+2. **登录失败会节流**：同一用户名 + IP 在 5 分钟内失败 5 次即返回 429（带 `Retry-After`），成功登录清零。
+   注意 `X-Forwarded-For` 可伪造：直连时按「提高成本」定位；若走反向代理，请让代理**覆盖**该头而不是追加，否则限流会被绕过。
+3. **不要删除 `.workbuddy` 目录**（若存在），其中为项目相关数据。
+4. 端口冲突时，改 `docker-compose.yml` 中 `ports` 左侧值，如 `3081:3080`。
+5. 容器以 `node` 用户（uid 1000）运行，挂载的 data 目录需可写；若 NAS 权限严格，可执行 `chown -R 1000:1000 data`。
    **部分品牌 NAS 需额外 `chmod -R 777 data`**：其 ACL 层对容器进程只认 other 权限位，即使宿主机同 uid 可写，容器内仍会报 `unable to open database file`（健康检查返回 503）。`deploy.sh` 已内置该步骤。
-5. 报告生成依赖大模型在线，网络不通时会在页面明确报错，不会静默失败。
-6. `outputs/` 目录为交付物输出位置，已在 `.gitignore` 与 `.dockerignore` 中排除。
+6. 报告生成依赖大模型在线；网络不通或 Key 失效时页面会明确报错，不会静默失败。
+7. `outputs/` 目录为交付物输出位置，已在 `.gitignore` 与 `.dockerignore` 中排除。
+
+### 适用边界
+
+本项目按「单实例、≤10 人、单库 ≤100MB」设计：
+
+- 数据库使用 Node 内置 `node:sqlite`（同步 API），单条查询是微秒到毫秒级；超过 100ms 的慢 SQL 会打 `[slow-sql]` 日志，便于事后判断是否需要引入 worker_threads。
+- 知识库检索默认走 FTS5 索引（trigram 分词，支持中文子串）；若运行时的 SQLite 未编译 FTS5，会自动回退逐篇匹配，并把探测结果写入 `obsidian.fts` 设置项，不静默降级。
+- `node:sqlite` 官方标注为 **Stability 1.2 – Release candidate**，API 仍可能微调；因此 Docker 基础镜像固定 Node 次版本，升级前请先在本机跑 `npm run typecheck && npm run test:unit`。
+- 单实例部署，未做多副本写入协调；需要多副本时请只让一个实例开启提醒循环（其余设 `REMINDER_LOOP=0`）。
 7. 若 Docker 侧配置了代理（`/etc/docker/daemon.json` 的 `proxies`），镜像拉取会强制走该代理；代理不可用时表现为 `Get "https://registry-1.docker.io/v2/": EOF`。此时可先修好代理，或改为从国内镜像源拉取后 `docker load`。注意 `docker build` 内部的 `npm`／`apk` 走容器网络，不受该代理影响。

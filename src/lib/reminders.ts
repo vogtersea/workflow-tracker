@@ -1,4 +1,4 @@
-import { getDb, getSetting } from './db';
+import { getDb, getSetting, setSetting } from './db';
 import { today, ymd, diffDays, ddlHint } from './date';
 
 /**
@@ -12,6 +12,8 @@ export interface ReminderConfig {
   enabled: boolean;
   /** 提前多少天开始提醒，默认 3 */
   aheadDays: number;
+  /** 每日推送时刻 HH:MM，默认 09:00 */
+  time: string;
   webhookEnabled: boolean;
   webhookUrl: string;
   webhookType: 'generic' | 'wecom' | 'dingtalk' | 'feishu';
@@ -22,6 +24,7 @@ export function getReminderConfig(): ReminderConfig {
   return {
     enabled: getSetting('remind.enabled', '1') === '1',
     aheadDays: Number(getSetting('remind.aheadDays', '3')),
+    time: getSetting('remind.time', '09:00'),
     webhookEnabled: getSetting('remind.webhookEnabled', '0') === '1',
     webhookUrl: getSetting('remind.webhookUrl', ''),
     webhookType: (getSetting('remind.webhookType', 'generic') as ReminderConfig['webhookType']) || 'generic',
@@ -226,15 +229,51 @@ export async function pushWebhook(items: ReminderItem[]): Promise<{ ok: boolean;
   }
 }
 
-/** 组合：扫描 + 入库 + 推送 */
-export async function runReminderJob(): Promise<{
+export interface JobResult {
+  skipped: boolean;
+  reason?: string;
   scanned: number;
   created: number;
   pushed: boolean;
   pushMessage: string;
-}> {
-  const { created, items } = syncNotifications();
+}
+
+/**
+ * 组合：扫描 + 入库 + 推送
+ *
+ * 幂等由两层保证：
+ *   - 站内通知：notifications.dedupe_key 去重
+ *   - 推送：settings.remind.lastRunDate 记录「今天已推过」，避免进程内定时器、
+ *     边车 curl、手动触发同时打进来造成重复推送
+ *
+ * force=true 时跳过时间与日期判断（用于手工验证 Webhook 连通性）。
+ */
+export async function runReminderJob(opts: { force?: boolean } = {}): Promise<JobResult> {
   const cfg = getReminderConfig();
+  if (!cfg.enabled && !opts.force) {
+    return { skipped: true, reason: '提醒已关闭', scanned: 0, created: 0, pushed: false, pushMessage: '' };
+  }
+
+  const todayStr = ymd(today());
+
+  if (!opts.force) {
+    if (getSetting('remind.lastRunDate', '') === todayStr) {
+      return { skipped: true, reason: '今日已执行', scanned: 0, created: 0, pushed: false, pushMessage: '' };
+    }
+    const now = new Date().toTimeString().slice(0, 5);
+    if (now < (cfg.time || '09:00')) {
+      return {
+        skipped: true,
+        reason: `未到提醒时刻 ${cfg.time || '09:00'}`,
+        scanned: 0,
+        created: 0,
+        pushed: false,
+        pushMessage: ''
+      };
+    }
+  }
+
+  const { created, items } = syncNotifications();
   let pushed = false;
   let pushMessage = '';
 
@@ -243,5 +282,9 @@ export async function runReminderJob(): Promise<{
     pushed = r.ok;
     pushMessage = r.message;
   }
-  return { scanned: items.length, created, pushed, pushMessage };
+
+  // 无论推送成功与否都记日期：避免推送失败后每半小时重试刷屏
+  if (!opts.force) setSetting('remind.lastRunDate', todayStr);
+
+  return { skipped: false, scanned: items.length, created, pushed, pushMessage };
 }

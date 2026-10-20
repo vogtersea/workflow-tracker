@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDb, dbPath } from '@/lib/db';
+import { startReminderLoop } from '@/lib/reminder-loop';
 import fs from 'node:fs';
 
 export const dynamic = 'force-dynamic';
@@ -7,6 +8,11 @@ export const dynamic = 'force-dynamic';
 /** 健康检查 — 供 Docker healthcheck 使用 */
 export async function GET() {
   try {
+    // 后台提醒循环的启动点：Docker healthcheck 每 30 秒打一次这里，
+    // 桌面版启动时也会轮询，因此服务起来后必然被唤醒，不依赖有人打开页面。
+    // startReminderLoop 内部有幂等标记，重复调用无副作用。
+    startReminderLoop();
+
     const db = getDb();
     const row = db.prepare('SELECT COUNT(*) AS c FROM users').get() as { c: number };
     // WAL 模式下新写入的数据先落在 -wal 文件里，只统计主库会严重低估实际占用

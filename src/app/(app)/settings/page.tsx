@@ -23,6 +23,7 @@ export default function SettingsPage() {
   const [remind, setRemind] = useState({
     enabled: true,
     aheadDays: 3,
+    time: '09:00',
     webhookEnabled: false,
     webhookUrl: '',
     webhookType: 'generic'
@@ -388,6 +389,17 @@ export default function SettingsPage() {
                 onChange={(e) => setRemind({ ...remind, aheadDays: Number(e.target.value) })}
                 disabled={!isAdmin}
               />
+            </div>
+            <div className="field">
+              <label className="field-label">每日推送时刻</label>
+              <input
+                type="time"
+                className="input"
+                value={remind.time}
+                onChange={(e) => setRemind({ ...remind, time: e.target.value })}
+                disabled={!isAdmin}
+              />
+              <div className="field-hint">到点后由后台自动推送，不需要开着页面</div>
             </div>
           </div>
 

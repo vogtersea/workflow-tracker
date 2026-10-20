@@ -22,6 +22,13 @@ services:
       ADMIN_DISPLAY_NAME: ${ADMIN_DISPLAY_NAME:-系统管理员}
       # 通过 HTTPS 反向代理访问时设为 1
       COOKIE_SECURE: ${COOKIE_SECURE:-0}
+      # 进程内提醒循环；单实例保持默认即可。
+      # 若改用外部定时器（/api/jobs/remind），把这里设为 0 避免重复触发。
+      REMINDER_LOOP: ${REMINDER_LOOP:-1}
+      # 外部触发接口的令牌。为空时 /api/jobs/remind 一律 403（不是"不校验"）。
+      JOB_TOKEN: ${JOB_TOKEN:-}
+      # 慢 SQL 阈值（毫秒），超过即在日志打 [slow-sql]
+      SLOW_SQL_MS: ${SLOW_SQL_MS:-100}
       # Obsidian 路径不在此设置。
       # 挂载后登录系统，在「设置 → Obsidian 知识库」中填写容器内路径（如 /vault）。
       # 容器只能访问已挂载的目录，挂载点须在下方面 volumes 定义；

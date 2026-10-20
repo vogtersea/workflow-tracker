@@ -1,0 +1,33 @@
+# 开发用编排：源码热更新，不重建镜像
+#
+#   docker compose -f docker-compose.dev.yml up
+#
+# 生产仍用 docker-compose.yml，两者互不影响。
+
+services:
+  app-dev:
+    image: node:24-alpine
+    container_name: workflow-tracker-dev
+    working_dir: /app
+    command: sh -c "npm install --no-audit --no-fund && npm run dev"
+    ports:
+      - '${APP_PORT:-3080}:3080'
+    volumes:
+      - .:/app
+      # 容器内不要用宿主的 node_modules（平台/架构可能不同）
+      - /app/node_modules
+      # 数据目录单独挂，避免被源码挂载覆盖
+      - ./data:/app/data
+      # Obsidian 知识库（可选）
+      # - ${OBSIDIAN_PATH}:/vault:rw
+    environment:
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: '1'
+      DATA_DIR: /app/data
+      TZ: ${TZ:-Asia/Shanghai}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      COOKIE_SECURE: '0'
+      # 开发时关掉进程内提醒循环，避免反复触发推送
+      REMINDER_LOOP: '0'
+    restart: unless-stopped

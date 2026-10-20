@@ -13,6 +13,8 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/login') ||
     pathname.startsWith('/api/auth/login') ||
     pathname.startsWith('/api/health') ||
+    // 定时任务入口：不用登录态，改用 JOB_TOKEN 头校验（在路由内实现）
+    pathname.startsWith('/api/jobs/') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon');
 

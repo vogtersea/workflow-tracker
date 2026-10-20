@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
+import { MIGRATIONS } from './migrations';
 
 /**
  * 数据库连接管理
@@ -16,6 +17,9 @@ import path from 'node:path';
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 const DB_FILE = process.env.DB_FILE || path.join(DATA_DIR, 'workflow.db');
+
+/** 同步 SQL 超过该阈值即认为可能阻塞事件循环，打 warn 供事后判断 */
+const SLOW_SQL_MS = Number(process.env.SLOW_SQL_MS || 100);
 
 /** 兼容层：统一暴露 prepare / exec / pragma / tx */
 export interface DbLike {
@@ -41,6 +45,19 @@ export function getDb(): DbLike {
   const db: DbLike = {
     prepare: (sql: string) => {
       const stmt = raw.prepare(sql);
+      // 慢查询打点：node:sqlite 是同步 API，超过阈值会阻塞事件循环，
+      // 先用数据判断是否需要 worker_threads，不预先上线程池。
+      const timed = <T>(fn: () => T): T => {
+        const t0 = performance.now();
+        try {
+          return fn();
+        } finally {
+          const cost = performance.now() - t0;
+          if (cost > SLOW_SQL_MS) {
+            console.warn(`[slow-sql] ${cost.toFixed(0)}ms`, sql.replace(/\s+/g, ' ').slice(0, 120));
+          }
+        }
+      };
       return {
         run: (...params: unknown[]) => {
           const r = stmt.run(...(params as never[]));
@@ -49,8 +66,8 @@ export function getDb(): DbLike {
             lastInsertRowid: Number(r.lastInsertRowid ?? 0)
           };
         },
-        get: (...params: unknown[]) => stmt.get(...(params as never[])),
-        all: (...params: unknown[]) => stmt.all(...(params as never[]))
+        get: (...params: unknown[]) => timed(() => stmt.get(...(params as never[]))),
+        all: (...params: unknown[]) => timed(() => stmt.all(...(params as never[])))
       };
     },
     exec: (sql: string) => raw.exec(sql),
@@ -239,6 +256,70 @@ function migrate(db: DbLike) {
 
   // 增量列（老库升级）：CREATE TABLE IF NOT EXISTS 不会补列，需显式 ALTER
   ensureColumn(db, 'task_templates', 'month_no', 'INTEGER');
+
+  // 版本化迁移：基线之后的所有结构变更都从这里走
+  runMigrations(db);
+}
+
+/**
+ * 迁移执行器
+ * - 首次升级老库：有业务表但无版本记录 → 回填 v1（基线），不重复建表
+ * - 每个待执行迁移前用 VACUUM INTO 做快照，失败留存现场
+ * - 迁移与版本登记在同一事务内，避免「改了结构但没记版本」
+ */
+function runMigrations(db: DbLike) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schema_version (
+      version    INTEGER PRIMARY KEY,
+      name       TEXT NOT NULL,
+      applied_at TEXT NOT NULL
+    );
+  `);
+
+  const maxRow = db.prepare('SELECT COALESCE(MAX(version), 0) AS v FROM schema_version').get() as {
+    v: number;
+  };
+  let current = Number(maxRow.v) || 0;
+
+  if (current === 0) {
+    // 基线已由上面的 CREATE TABLE IF NOT EXISTS 建好，登记为 v1
+    db.prepare('INSERT INTO schema_version (version, name, applied_at) VALUES (1, ?, ?)').run(
+      'baseline',
+      new Date().toISOString()
+    );
+    current = 1;
+  }
+
+  for (const m of MIGRATIONS) {
+    if (m.version <= current) continue;
+    try {
+      snapshotBefore(db, m.version);
+      db.tx(() => {
+        m.up(db);
+        db.prepare('INSERT INTO schema_version (version, name, applied_at) VALUES (?, ?, ?)').run(
+          m.version,
+          m.name,
+          new Date().toISOString()
+        );
+      });
+      console.log(`[migrate] 已应用 v${m.version} ${m.name}`);
+    } catch (e) {
+      console.error(`[migrate] v${m.version} ${m.name} 执行失败，已保留快照`, e);
+      throw e;
+    }
+  }
+}
+
+/** 迁移前快照，落在 data/backups 下；失败不阻断迁移（只警告） */
+function snapshotBefore(db: DbLike, version: number) {
+  try {
+    const dir = path.join(DATA_DIR, 'backups');
+    fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, `pre-v${version}-${Date.now()}.db`);
+    db.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`);
+  } catch (e) {
+    console.warn('[migrate] 快照失败，继续执行迁移', e);
+  }
 }
 
 /** 幂等补列 */

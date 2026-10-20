@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { getSetting } from './db';
+import { supportsFts5, syncIndex, searchIndex, indexStale } from './fts';
 
 /**
  * Obsidian 知识库集成
@@ -123,10 +124,32 @@ export function readNote(relPath: string): { path: string; content: string } | n
   return { path: relPath, content };
 }
 
-/** 关键词检索：标题命中权重高于正文 */
+/** 关键词检索：优先走 FTS5 索引，短词或索引不可用时回退逐篇 LIKE */
 export function searchNotes(keyword: string, limit = 20): VaultNote[] {
   const notes = listNotes();
   if (!keyword.trim()) return notes.slice(0, limit);
+
+  const dir = vaultDir();
+  const kw = keyword.trim();
+
+  // FTS5 分支：避免「每次检索都把所有笔记读一遍」
+  if (dir && kw.length >= 3 && supportsFts5()) {
+    try {
+      if (indexStale()) syncIndex(dir, notes);
+      const hits = searchIndex(kw, limit);
+      if (hits.length) {
+        const byPath = new Map(notes.map((n) => [n.path, n]));
+        const out: VaultNote[] = [];
+        hits.forEach((h, i) => {
+          const base = byPath.get(h.path);
+          if (base) out.push({ ...base, excerpt: h.snippet, score: 100 - i });
+        });
+        if (out.length) return out;
+      }
+    } catch {
+      /* 索引异常一律回退 LIKE，不影响可用性 */
+    }
+  }
 
   const terms = keyword
     .toLowerCase()
@@ -135,7 +158,6 @@ export function searchNotes(keyword: string, limit = 20): VaultNote[] {
   if (!terms.length) return [];
 
   const results: VaultNote[] = [];
-  const dir = vaultDir();
 
   for (const n of notes) {
     let score = 0;

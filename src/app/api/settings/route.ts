@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireUser, requireAdmin, UnauthorizedError, ForbiddenError } from '@/lib/auth';
-import { getSettings, setSetting } from '@/lib/db';
+import { getSettings, setSetting, getSetting } from '@/lib/db';
 import { getLlmConfig, saveLlmConfig, testLlm, listModels } from '@/lib/llm';
 import { getReminderConfig } from '@/lib/reminders';
 import { vaultEnabled, vaultDir, vaultDirSource, writebackSubdir } from '@/lib/obsidian';
@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 const KEYS = [
   'remind.enabled',
   'remind.aheadDays',
+  'remind.time',
   'remind.webhookEnabled',
   'remind.webhookUrl',
   'remind.webhookType',
@@ -59,7 +60,9 @@ export async function GET(req: Request) {
           enabled: vaultEnabled(),
           dir: vaultDir(),
           dirSource: vaultDirSource(),
-          writeback: writebackSubdir()
+          writeback: writebackSubdir(),
+          // FTS5 探测结果：1 走索引，0 回退逐篇 LIKE，空表示尚未探测
+          fts: getSetting('obsidian.fts', '')
         },
         system: {
           dbPath: dbPath(),
@@ -99,6 +102,7 @@ export async function POST(req: Request) {
       const map: Record<string, string> = {
         'remind.enabled': r.enabled ? '1' : '0',
         'remind.aheadDays': String(r.aheadDays ?? 3),
+        'remind.time': /^\d{2}:\d{2}$/.test(String(r.time ?? '')) ? String(r.time) : '09:00',
         'remind.webhookEnabled': r.webhookEnabled ? '1' : '0',
         'remind.webhookUrl': r.webhookUrl ?? '',
         'remind.webhookType': r.webhookType ?? 'generic'

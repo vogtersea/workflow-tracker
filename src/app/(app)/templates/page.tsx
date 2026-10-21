@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Empty, Loading, ConfirmDialog, Modal } from '@/components/ui';
 import { useShell } from '@/components/Shell';
 import type { TemplateDto, TagDto, CurrentUser, CadenceDto } from '@/types';
+import { api } from '@/lib/api-client';
 
 const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
@@ -55,7 +56,7 @@ export default function TemplatesPage() {
 
   async function load() {
     try {
-      const res = await fetch('/api/templates');
+      const res = await api('/api/templates');
       const json = await res.json();
       if (json.ok) setTemplates(json.data);
     } catch {
@@ -67,9 +68,9 @@ export default function TemplatesPage() {
 
   useEffect(() => {
     load();
-    fetch('/api/tags').then((r) => r.json()).then((j) => j.ok && setTags(j.data)).catch(() => {});
+    api('/api/tags').then((r) => r.json()).then((j) => j.ok && setTags(j.data)).catch(() => {});
     if (isAdmin) {
-      fetch('/api/users').then((r) => r.json()).then((j) => j.ok && setUsers(j.data)).catch(() => {});
+      api('/api/users').then((r) => r.json()).then((j) => j.ok && setUsers(j.data)).catch(() => {});
     }
   }, [isAdmin]);
 
@@ -80,7 +81,7 @@ export default function TemplatesPage() {
     }
     setSaving(true);
     try {
-      const res = await fetch('/api/templates', {
+      const res = await api('/api/templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -106,7 +107,7 @@ export default function TemplatesPage() {
   }
 
   async function toggle(id: number, enabled: number) {
-    await fetch('/api/templates', {
+    await api('/api/templates', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, enabled: enabled ? 0 : 1 })
@@ -116,7 +117,7 @@ export default function TemplatesPage() {
 
   async function doDelete() {
     if (!deleteId) return;
-    const res = await fetch(`/api/templates?id=${deleteId}`, { method: 'DELETE' });
+    const res = await api(`/api/templates?id=${deleteId}`, { method: 'DELETE' });
     const json = await res.json();
     setDeleteId(null);
     if (json.ok) {
@@ -126,7 +127,7 @@ export default function TemplatesPage() {
   }
 
   async function manualGenerate() {
-    const res = await fetch('/api/templates', { method: 'PUT' });
+    const res = await api('/api/templates', { method: 'PUT' });
     const json = await res.json();
     if (json.ok) {
       toast(

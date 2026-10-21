@@ -17,6 +17,16 @@ next-env.d.ts
 *.tsbuildinfo
 .tmp-cadence/
 .tmp-test/
+.tmp-scrypt/
+.next-local/
+.next-local-*/
+out-local/
+android/local.properties
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
 .vault*/
 .vaulttest/
 .vaulttmp/
@@ -25,3 +35,4 @@ next-env.d.ts
 .workbuddy/
 tmp*-inst/
 tmpinst*/
+public/sqlite3.wasm

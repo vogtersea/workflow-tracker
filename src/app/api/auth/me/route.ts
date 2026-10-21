@@ -1,10 +1,9 @@
-import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+// 副作用导入：向同构层注册 node:sqlite 实现（instrumentation 在 dev 下不保证先执行）
+import '@/lib/db';
+import { authMe } from '@/lib/api/auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ ok: false, error: '未登录' }, { status: 401 });
-  return NextResponse.json({ ok: true, data: user });
+export async function GET(req: Request) {
+  return authMe(req);
 }

@@ -1,4 +1,4 @@
-import { getDb } from './db';
+import { getDb } from './db-registry';
 import { isoWeek, ymd, today } from './date';
 
 /** 工作项查询与写入的核心逻辑 */

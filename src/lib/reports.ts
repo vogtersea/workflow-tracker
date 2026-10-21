@@ -1,4 +1,4 @@
-import { getDb } from './db';
+import { getDb } from './db-registry';
 import { queryTasks, tagBreakdown, type TaskRow } from './tasks';
 import { chat, isLlmConfigured } from './llm';
 import { cnDate, ddlHint, PRIORITY_LABEL, STATUS_LABEL, diffDays } from './date';

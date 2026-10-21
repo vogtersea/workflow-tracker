@@ -1,15 +1,19 @@
-import crypto from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
-import { cookies } from 'next/headers';
-import { getDb, dataDir } from './db';
-import type { NextRequest } from 'next/server';
+import { getDb } from './db-registry';
+import { hashPassword, verifyPassword, randomToken } from './crypto';
+import { IS_LOCAL_BUILD } from './runtime-mode';
 
 /**
- * 认证与权限
- * - 密码使用 scrypt 加盐哈希
- * - 会话 token 存 cookie（httpOnly），服务端 sessions 表校验
- * - 角色：admin（全部权限）、member（仅本人工作）
+ * 认证与权限（同构）
+ *
+ * 本文件可在服务端与手机端浏览器里同时运行，**不得引入任何 node: 模块或 next/* 模块**。
+ *
+ * 取当前用户有两条路径：
+ *   1. API 层：requireUserFrom(req) —— 从请求头 cookie 解析，两端行为一致
+ *   2. 服务端组件：getCurrentUser() —— 依赖平台注册的解析器，
+ *      服务端由 auth-server.ts 注册（读 next/headers 的 cookies），
+ *      手机端由 auth-local.ts 注册（读本地存储的会话）
+ *
+ * 密码学实现已迁到 crypto.ts（纯 JS scrypt），与服务端历史哈希逐字节兼容。
  */
 
 const COOKIE_NAME = 'wt_session';
@@ -22,25 +26,38 @@ export interface SessionUser {
   role: 'admin' | 'member';
 }
 
-export function hashPassword(password: string): string {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-  return `${salt}:${hash}`;
+// 密码学函数在 auth 上保留同名转出口，历史 import 路径不用改
+export { hashPassword, verifyPassword };
+
+// ---------------- 当前用户解析器（平台相关，由各自入口注册） ----------------
+
+type UserResolver = () => Promise<SessionUser | null>;
+
+let _resolveCurrentUser: UserResolver | null = null;
+
+export function setCurrentUserResolver(fn: UserResolver): void {
+  _resolveCurrentUser = fn;
 }
 
-export function verifyPassword(password: string, stored: string): boolean {
-  try {
-    const [salt, hash] = stored.split(':');
-    if (!salt || !hash) return false;
-    const test = crypto.scryptSync(password, salt, 64).toString('hex');
-    return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(test, 'hex'));
-  } catch {
-    return false;
+/**
+ * 服务端组件 / 手机端组件通用的「取当前登录用户」。
+ *
+ * 未注册解析器时抛错而不是返回 null——否则会静默变成「所有人都未登录」，
+ * 排查起来非常费劲。宁可让问题立刻暴露。
+ */
+export async function getCurrentUser(): Promise<SessionUser | null> {
+  if (!_resolveCurrentUser) {
+    throw new Error(
+      '当前用户解析器未注册：服务端请 import @/lib/auth-server，手机端请先 initLocalAuth()'
+    );
   }
+  return _resolveCurrentUser();
 }
+
+// ---------------- 会话 ----------------
 
 export function createSession(userId: number): { token: string; expiresAt: string } {
-  const token = crypto.randomBytes(32).toString('hex');
+  const token = randomToken();
   const expires = new Date();
   expires.setDate(expires.getDate() + SESSION_DAYS);
   const expiresAt = expires.toISOString();
@@ -50,62 +67,8 @@ export function createSession(userId: number): { token: string; expiresAt: strin
   return { token, expiresAt };
 }
 
-export function destroySession(token: string) {
+export function destroySession(token: string): void {
   getDb().prepare('DELETE FROM sessions WHERE token = ?').run(token);
-}
-
-/** 首次启动自动创建管理员 — 未显式配置口令时生成随机口令，杜绝默认口令兜底 */
-export function ensureAdminSeed() {
-  const db = getDb();
-  const count = (db.prepare('SELECT COUNT(*) AS c FROM users').get() as { c: number }).c;
-  if (count > 0) return { created: false as const };
-
-  const username = process.env.ADMIN_USERNAME || 'admin';
-  const fromEnv = process.env.ADMIN_PASSWORD;
-  const password = fromEnv || crypto.randomBytes(9).toString('base64url');
-  const display = process.env.ADMIN_DISPLAY_NAME || '系统管理员';
-
-  db.prepare(
-    'INSERT INTO users (username, display_name, password_hash, role) VALUES (?, ?, ?, ?)'
-  ).run(username, display, hashPassword(password), 'admin');
-
-  if (!fromEnv) {
-    // 只落盘到数据目录，不进日志、不进返回值
-    const file = path.join(dataDir(), 'initial-password.txt');
-    try {
-      fs.mkdirSync(path.dirname(file), { recursive: true });
-      fs.writeFileSync(
-        file,
-        [
-          '工作流程跟踪工作台 —— 首次启动生成的登录信息',
-          '',
-          `username: ${username}`,
-          `password: ${password}`,
-          '',
-          '登录后请立即在「系统设置 → 修改密码」中修改，然后删除本文件。',
-          `created_at: ${new Date().toISOString()}`
-        ].join('\n'),
-        { mode: 0o600 }
-      );
-      console.warn(`[init] 未设置 ADMIN_PASSWORD，已生成随机口令：${file}`);
-    } catch (e) {
-      console.warn('[init] 随机口令落盘失败，请立即用下面的口令登录并修改：', password, e);
-    }
-  }
-
-  return { created: true as const, username };
-}
-
-/** 服务端组件/路由中取当前用户 */
-export async function getCurrentUser(): Promise<SessionUser | null> {
-  const jar = await cookies();
-  const token = jar.get(COOKIE_NAME)?.value;
-  return userFromToken(token);
-}
-
-/** 中间件/路由处理器取用户 */
-export function userFromRequest(req: NextRequest): SessionUser | null {
-  return userFromToken(req.cookies.get(COOKIE_NAME)?.value);
 }
 
 export function userFromToken(token: string | undefined | null): SessionUser | null {
@@ -126,7 +89,77 @@ export function userFromToken(token: string | undefined | null): SessionUser | n
   return { id: row.id, username: row.username, display_name: row.display_name, role: row.role };
 }
 
+// ---------------- 从请求里取用户（API 层同构路径） ----------------
+
+/** 极简 cookie 解析，不依赖 next/headers 或任何框架 */
+export function readCookie(req: Request, name: string): string | undefined {
+  const raw = req.headers.get('cookie');
+  if (!raw) return undefined;
+  for (const part of raw.split(';')) {
+    const idx = part.indexOf('=');
+    if (idx < 0) continue;
+    if (part.slice(0, idx).trim() !== name) continue;
+    const value = part.slice(idx + 1).trim();
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * 从请求里取会话令牌。
+ *
+ * 两条来源：
+ *   1. Cookie 头 —— 服务端形态的常规路径，httpOnly cookie 由浏览器自动带上
+ *   2. X-WT-Session 头 —— 仅手机单机版使用
+ *
+ * 为什么单机版不能沿用 Cookie：浏览器的 Request 对象把 Cookie 列为禁用请求头，
+ * 脚本设置会被静默丢弃（和 Set-Cookie 属同一类限制），只能走自定义头。
+ * 这个分支只在手机版构建里生效，服务端形态不会接受该头，避免多出一条认证旁路。
+ */
+export function sessionTokenFromRequest(req: Request): string | null {
+  const fromCookie = readCookie(req, COOKIE_NAME);
+  if (fromCookie) return fromCookie;
+  if (IS_LOCAL_BUILD) return req.headers.get('x-wt-session') || null;
+  return null;
+}
+
+export function userFromRequest(req: Request): SessionUser | null {
+  return userFromToken(sessionTokenFromRequest(req));
+}
+
+export function requireUserFrom(req: Request): SessionUser {
+  const u = userFromRequest(req);
+  if (!u) throw new UnauthorizedError();
+  return u;
+}
+
+export function requireAdminFrom(req: Request): SessionUser {
+  const u = requireUserFrom(req);
+  if (u.role !== 'admin') throw new ForbiddenError('仅管理员可执行该操作');
+  return u;
+}
+
+// ---------------- 兼容旧签名（服务端组件路径） ----------------
+
+export async function requireUser(): Promise<SessionUser> {
+  const u = await getCurrentUser();
+  if (!u) throw new UnauthorizedError();
+  return u;
+}
+
+export async function requireAdmin(): Promise<SessionUser> {
+  const u = await requireUser();
+  if (u.role !== 'admin') throw new ForbiddenError('仅管理员可执行该操作');
+  return u;
+}
+
 export const COOKIE_KEY = COOKIE_NAME;
+
+// ---------------- 错误类型 ----------------
 
 /** 未登录时抛出，由 API 包装器转换为 401 */
 export class UnauthorizedError extends Error {
@@ -141,18 +174,6 @@ export class ForbiddenError extends Error {
     super(msg);
     this.name = 'ForbiddenError';
   }
-}
-
-export async function requireUser(): Promise<SessionUser> {
-  const u = await getCurrentUser();
-  if (!u) throw new UnauthorizedError();
-  return u;
-}
-
-export async function requireAdmin(): Promise<SessionUser> {
-  const u = await requireUser();
-  if (u.role !== 'admin') throw new ForbiddenError('仅管理员可执行该操作');
-  return u;
 }
 
 /** 审计日志 */

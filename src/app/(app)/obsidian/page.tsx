@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Empty, Loading, Modal } from '@/components/ui';
 import { useShell } from '@/components/Shell';
+import { api } from '@/lib/api-client';
 
 interface Note {
   path: string;
@@ -34,7 +35,7 @@ export default function ObsidianPage() {
   const [previewLoading, setPreviewLoading] = useState(false);
 
   useEffect(() => {
-    fetch('/api/obsidian?mode=tree')
+    api('/api/obsidian?mode=tree')
       .then((r) => r.json())
       .then((j) => {
         if (j.ok) {
@@ -54,7 +55,7 @@ export default function ObsidianPage() {
     }
     setSearching(true);
     try {
-      const res = await fetch(`/api/obsidian?mode=search&q=${encodeURIComponent(keyword)}&limit=30`);
+      const res = await api(`/api/obsidian?mode=search&q=${encodeURIComponent(keyword)}&limit=30`);
       const json = await res.json();
       if (json.ok) setResults(json.data);
       else toast(json.error || '检索失败', 'error');
@@ -67,7 +68,7 @@ export default function ObsidianPage() {
     setPreviewLoading(true);
     setPreview({ path, content: '' });
     try {
-      const res = await fetch(`/api/obsidian?mode=read&path=${encodeURIComponent(path)}`);
+      const res = await api(`/api/obsidian?mode=read&path=${encodeURIComponent(path)}`);
       const json = await res.json();
       if (json.ok) setPreview(json.data);
       else {

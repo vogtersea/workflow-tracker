@@ -4,6 +4,7 @@ import { useEffect, useState, createContext, useContext, useCallback } from 'rea
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { CurrentUser } from '@/types';
+import { api } from '@/lib/api-client';
 
 interface ShellContextValue {
   user: CurrentUser | null;
@@ -79,7 +80,7 @@ export default function Shell({
 
   const refreshBadges = useCallback(async () => {
     try {
-      const res = await fetch('/api/dashboard/badges');
+      const res = await api('/api/dashboard/badges');
       const json = await res.json();
       if (json.ok) setBadges(json.data);
     } catch {
@@ -138,7 +139,7 @@ export default function Shell({
   }, [mobileOpen]);
 
   async function logout() {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await api('/api/auth/logout', { method: 'POST' });
     router.replace('/login');
     router.refresh();
   }

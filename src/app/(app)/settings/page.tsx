@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Loading } from '@/components/ui';
 import { useShell } from '@/components/Shell';
+import { api } from '@/lib/api-client';
 
 export default function SettingsPage() {
   const { user, toast } = useShell();
@@ -48,12 +49,12 @@ export default function SettingsPage() {
     setProbe({ checking: true, result: null });
     try {
       // 先保存再探测，确保探测的是当前填写的路径
-      await fetch('/api/settings', {
+      await api('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ section: 'obsidian', obsidian })
       });
-      const res = await fetch('/api/obsidian?mode=tree');
+      const res = await api('/api/obsidian?mode=tree');
       const json = await res.json();
       if (json.ok && json.data.enabled) {
         setProbe({
@@ -93,7 +94,7 @@ export default function SettingsPage() {
     }
     setPwdSaving(true);
     try {
-      const res = await fetch('/api/users', {
+      const res = await api('/api/users', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -117,7 +118,7 @@ export default function SettingsPage() {
   }
 
   useEffect(() => {
-    fetch('/api/settings')
+    api('/api/settings')
       .then((r) => r.json())
       .then((j) => {
         if (j.ok) {
@@ -135,7 +136,7 @@ export default function SettingsPage() {
   async function saveLlm() {
     setSaving('llm');
     try {
-      const res = await fetch('/api/settings', {
+      const res = await api('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ section: 'llm', llm })
@@ -155,12 +156,12 @@ export default function SettingsPage() {
     setTestResult(null);
     try {
       // 先保存再测试，确保测的是当前填写的值
-      await fetch('/api/settings', {
+      await api('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ section: 'llm', llm })
       });
-      const res = await fetch('/api/settings?mode=testLlm');
+      const res = await api('/api/settings?mode=testLlm');
       const json = await res.json();
       if (json.ok) setTestResult(json.data);
       else setTestResult({ ok: false, message: json.error || '测试失败', latencyMs: 0 });
@@ -173,7 +174,7 @@ export default function SettingsPage() {
 
   async function fetchModels() {
     try {
-      const res = await fetch('/api/settings?mode=models');
+      const res = await api('/api/settings?mode=models');
       const json = await res.json();
       if (json.ok && json.data.length) {
         setModels(json.data);
@@ -187,7 +188,7 @@ export default function SettingsPage() {
   async function saveRemind() {
     setSaving('remind');
     try {
-      const res = await fetch('/api/settings', {
+      const res = await api('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ section: 'remind', remind })
@@ -203,7 +204,7 @@ export default function SettingsPage() {
   async function saveObsidian() {
     setSaving('obsidian');
     try {
-      const res = await fetch('/api/settings', {
+      const res = await api('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ section: 'obsidian', obsidian })

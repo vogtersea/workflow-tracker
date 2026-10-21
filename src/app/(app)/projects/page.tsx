@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Empty, Loading, ConfirmDialog, Modal } from '@/components/ui';
 import { useShell } from '@/components/Shell';
 import type { ProjectDto } from '@/types';
+import { api } from '@/lib/api-client';
 
 const PRESET_COLORS = [
   '#7f1d1d',
@@ -38,7 +39,7 @@ export default function ProjectsPage() {
 
   async function load() {
     try {
-      const res = await fetch(`/api/projects${showArchived ? '?all=1' : ''}`);
+      const res = await api(`/api/projects${showArchived ? '?all=1' : ''}`);
       const json = await res.json();
       if (json.ok) setProjects(json.data);
       else toast(json.error || '加载失败', 'error');
@@ -60,7 +61,7 @@ export default function ProjectsPage() {
     }
     setSaving(true);
     try {
-      const res = await fetch('/api/projects', {
+      const res = await api('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim(), description: desc.trim(), color })
@@ -94,7 +95,7 @@ export default function ProjectsPage() {
     }
     setSaving(true);
     try {
-      const res = await fetch(`/api/projects/${editing.id}`, {
+      const res = await api(`/api/projects/${editing.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: editName.trim(), description: editDesc.trim(), color: editColor })
@@ -114,7 +115,7 @@ export default function ProjectsPage() {
 
   async function toggleArchive(p: ProjectDto) {
     const next = p.status === 'active' ? 'archived' : 'active';
-    const res = await fetch(`/api/projects/${p.id}`, {
+    const res = await api(`/api/projects/${p.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: next })
@@ -128,7 +129,7 @@ export default function ProjectsPage() {
 
   async function doDelete() {
     if (!deleteId) return;
-    const res = await fetch(`/api/projects?id=${deleteId}`, { method: 'DELETE' });
+    const res = await api(`/api/projects?id=${deleteId}`, { method: 'DELETE' });
     const json = await res.json();
     setDeleteId(null);
     if (json.ok) {

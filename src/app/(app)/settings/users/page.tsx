@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loading, ConfirmDialog, Modal } from '@/components/ui';
 import { useShell } from '@/components/Shell';
+import { api } from '@/lib/api-client';
 
 interface UserRow {
   id: number;
@@ -34,7 +35,7 @@ export default function UsersPage() {
 
   async function load() {
     try {
-      const res = await fetch('/api/users');
+      const res = await api('/api/users');
       const json = await res.json();
       if (json.ok) setRows(json.data);
       else toast(json.error || '加载失败', 'error');
@@ -58,7 +59,7 @@ export default function UsersPage() {
     }
     setSaving(true);
     try {
-      const res = await fetch('/api/users', {
+      const res = await api('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
@@ -76,7 +77,7 @@ export default function UsersPage() {
   }
 
   async function update(id: number, body: Record<string, unknown>) {
-    const res = await fetch('/api/users', {
+    const res = await api('/api/users', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, ...body })
@@ -94,7 +95,7 @@ export default function UsersPage() {
       toast('密码至少 6 位', 'error');
       return;
     }
-    const res = await fetch('/api/users', {
+    const res = await api('/api/users', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'resetPassword', id: pwdUser.id, password: newPwd })
@@ -109,7 +110,7 @@ export default function UsersPage() {
 
   async function doDelete() {
     if (!deleteId) return;
-    const res = await fetch(`/api/users?id=${deleteId}`, { method: 'DELETE' });
+    const res = await api(`/api/users?id=${deleteId}`, { method: 'DELETE' });
     const json = await res.json();
     setDeleteId(null);
     if (json.ok) {

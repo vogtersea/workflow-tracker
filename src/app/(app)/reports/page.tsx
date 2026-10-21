@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Empty, Loading, ConfirmDialog } from '@/components/ui';
 import { useShell } from '@/components/Shell';
+import { api } from '@/lib/api-client';
 
 interface Report {
   id: number;
@@ -34,7 +35,7 @@ export default function ReportsPage() {
 
   async function load() {
     try {
-      const res = await fetch('/api/reports');
+      const res = await api('/api/reports');
       const json = await res.json();
       if (json.ok) setReports(json.data);
     } catch {
@@ -50,7 +51,7 @@ export default function ReportsPage() {
 
   async function doDelete() {
     if (!deleteId) return;
-    const res = await fetch(`/api/reports/${deleteId}`, { method: 'DELETE' });
+    const res = await api(`/api/reports/${deleteId}`, { method: 'DELETE' });
     const json = await res.json();
     setDeleteId(null);
     if (json.ok) {
@@ -62,7 +63,7 @@ export default function ReportsPage() {
   async function exportToVault(id: number) {
     setExporting(id);
     try {
-      const res = await fetch(`/api/reports/${id}/export?format=vault`);
+      const res = await api(`/api/reports/${id}/export?format=vault`);
       const json = await res.json();
       if (json.ok) toast(`已写入知识库：${json.data.path}`, 'success');
       else toast(json.error || '写入失败', 'error');

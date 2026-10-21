@@ -1,4 +1,4 @@
-import { getDb } from './db';
+import { getDb } from './db-registry';
 import { cnDate, ddlHint, PRIORITY_LABEL, STATUS_LABEL, diffDays } from './date';
 import type { TaskRow } from './tasks';
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Empty, Loading, ConfirmDialog } from '@/components/ui';
 import { useShell } from '@/components/Shell';
+import { api } from '@/lib/api-client';
 
 interface Tag {
   id: number;
@@ -33,7 +34,7 @@ export default function TagsPage() {
 
   async function load() {
     try {
-      const res = await fetch('/api/tags');
+      const res = await api('/api/tags');
       const json = await res.json();
       if (json.ok) setTags(json.data);
     } catch {
@@ -54,7 +55,7 @@ export default function TagsPage() {
     }
     setSaving(true);
     try {
-      const res = await fetch('/api/tags', {
+      const res = await api('/api/tags', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim(), color })
@@ -72,7 +73,7 @@ export default function TagsPage() {
 
   async function doDelete() {
     if (!deleteId) return;
-    const res = await fetch(`/api/tags?id=${deleteId}`, { method: 'DELETE' });
+    const res = await api(`/api/tags?id=${deleteId}`, { method: 'DELETE' });
     const json = await res.json();
     setDeleteId(null);
     if (json.ok) {

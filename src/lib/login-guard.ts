@@ -1,4 +1,4 @@
-import { getDb } from './db';
+import { getDb } from './db-registry';
 
 /**
  * 登录失败节流

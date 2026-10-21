@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loading } from '@/components/ui';
 import { useShell } from '@/components/Shell';
+import { api } from '@/lib/api-client';
 
 interface Report {
   id: number;
@@ -32,7 +33,7 @@ export default function ReportDetailPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/reports/${id}`);
+      const res = await api(`/api/reports/${id}`);
       const json = await res.json();
       if (json.ok) {
         setReport(json.data);
@@ -52,7 +53,7 @@ export default function ReportDetailPage() {
   async function saveDraft() {
     setSaving(true);
     try {
-      const res = await fetch(`/api/reports/${id}`, {
+      const res = await api(`/api/reports/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content_md: draft })
@@ -71,7 +72,7 @@ export default function ReportDetailPage() {
   async function writeVault() {
     setVaultWriting(true);
     try {
-      const res = await fetch(`/api/reports/${id}/export?format=vault`);
+      const res = await api(`/api/reports/${id}/export?format=vault`);
       const json = await res.json();
       if (json.ok) toast(`已写入：${json.data.path}`, 'success');
       else toast(json.error || '写入失败', 'error');

@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { getDb, setSetting } from './db';
+import { getDb, setSetting } from './db-registry';
 
 /**
  * 知识库全文索引（FTS5）

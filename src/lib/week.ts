@@ -1,4 +1,4 @@
-import { getDb } from './db';
+import { getDb } from './db-registry';
 import { isoWeek, ymd, parseYmd } from './date';
 import type { TaskRow } from './tasks';
 

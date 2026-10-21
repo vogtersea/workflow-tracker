@@ -1,4 +1,4 @@
-import { getDb, getSetting, setSetting } from './db';
+import { getDb, getSetting, setSetting } from './db-registry';
 import { today, ymd, diffDays, ddlHint } from './date';
 
 /**

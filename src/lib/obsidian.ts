@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { getSetting } from './db';
+import { getSetting } from './db-registry';
 import { supportsFts5, syncIndex, searchIndex, indexStale } from './fts';
 
 /**

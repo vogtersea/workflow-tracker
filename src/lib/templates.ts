@@ -1,4 +1,4 @@
-import { getDb } from './db';
+import { getDb } from './db-registry';
 import { isoWeek, ymd, today, daysInMonth } from './date';
 import { createTask } from './tasks';
 

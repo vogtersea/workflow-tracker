@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Modal, ConfirmDialog, Empty, Loading, DueChip, PriorityChip, StatusChip, TagPills } from '@/components/ui';
 import { useShell } from '@/components/Shell';
 import type { TaskDto, TagDto, CurrentUser, CadenceDto, ProjectDto } from '@/types';
+import { api } from '@/lib/api-client';
 
 const PRIORITIES = [
   { value: 'urgent', label: '紧急' },
@@ -101,7 +102,7 @@ function TasksInner() {
       if (projectFilter) q.set('project', projectFilter);
       if (ownerFilter !== 'all') q.set('owner', ownerFilter);
 
-      const res = await fetch(`/api/tasks?${q}`);
+      const res = await api(`/api/tasks?${q}`);
       const json = await res.json();
       if (json.ok) {
         let list: TaskDto[] = json.data.rows;
@@ -138,16 +139,16 @@ function TasksInner() {
   }, [load]);
 
   useEffect(() => {
-    fetch('/api/tags')
+    api('/api/tags')
       .then((r) => r.json())
       .then((j) => j.ok && setTags(j.data))
       .catch(() => {});
-    fetch('/api/projects')
+    api('/api/projects')
       .then((r) => r.json())
       .then((j) => j.ok && setProjects(j.data))
       .catch(() => {});
     if (isAdmin) {
-      fetch('/api/users')
+      api('/api/users')
         .then((r) => r.json())
         .then((j) => j.ok && setUsers(j.data))
         .catch(() => {});
@@ -178,7 +179,7 @@ function TasksInner() {
     try {
       // 例行固定工作：落到周期模板，并立即生成本周期实例
       if (form.kind === 'routine') {
-        const res = await fetch('/api/templates', {
+        const res = await api('/api/templates', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -225,7 +226,7 @@ function TasksInner() {
         estimate_hours: form.estimate_hours ? Number(form.estimate_hours) : null,
         project_id: form.project_id ? Number(form.project_id) : null
       };
-      const res = await fetch('/api/tasks', {
+      const res = await api('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -250,7 +251,7 @@ function TasksInner() {
   }
 
   async function changeStatus(id: number, next: string) {
-    const res = await fetch(`/api/tasks/${id}`, {
+    const res = await api(`/api/tasks/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: next })
@@ -267,7 +268,7 @@ function TasksInner() {
 
   async function doDelete() {
     if (!deleteId) return;
-    const res = await fetch(`/api/tasks/${deleteId}`, { method: 'DELETE' });
+    const res = await api(`/api/tasks/${deleteId}`, { method: 'DELETE' });
     const json = await res.json();
     setDeleteId(null);
     if (json.ok) {

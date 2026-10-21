@@ -7,6 +7,7 @@ import { ConfirmDialog, Loading, StatusChip, PriorityChip, DueChip, TagPills, Mo
 import { useShell } from '@/components/Shell';
 import type { TaskDto, ProgressDto, TagDto, CurrentUser, ProjectDto } from '@/types';
 import { PRIORITY_LABEL, STATUS_LABEL } from '@/lib/date';
+import { api } from '@/lib/api-client';
 
 type Detail = TaskDto & { progress: ProgressDto[] };
 
@@ -54,7 +55,7 @@ export default function TaskDetailPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/tasks/${id}`);
+      const res = await api(`/api/tasks/${id}`);
       const json = await res.json();
       if (json.ok) {
         setTask(json.data);
@@ -70,16 +71,16 @@ export default function TaskDetailPage() {
 
   useEffect(() => {
     load();
-    fetch('/api/tags')
+    api('/api/tags')
       .then((r) => r.json())
       .then((j) => j.ok && setTags(j.data))
       .catch(() => {});
-    fetch('/api/projects')
+    api('/api/projects')
       .then((r) => r.json())
       .then((j) => j.ok && setProjects(j.data))
       .catch(() => {});
     if (isAdmin) {
-      fetch('/api/users')
+      api('/api/users')
         .then((r) => r.json())
         .then((j) => j.ok && setUsers(j.data))
         .catch(() => {});
@@ -93,7 +94,7 @@ export default function TaskDetailPage() {
     }
     setPosting(true);
     try {
-      const res = await fetch(`/api/tasks/${id}`, {
+      const res = await api(`/api/tasks/${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: content.trim(), percent: percent || null })
@@ -116,7 +117,7 @@ export default function TaskDetailPage() {
   }
 
   async function patch(body: Record<string, unknown>) {
-    const res = await fetch(`/api/tasks/${id}`, {
+    const res = await api(`/api/tasks/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -170,7 +171,7 @@ export default function TaskDetailPage() {
   }
 
   async function doDeleteTask() {
-    const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+    const res = await api(`/api/tasks/${id}`, { method: 'DELETE' });
     const json = await res.json();
     if (json.ok) {
       toast('已删除', 'success');
@@ -184,7 +185,7 @@ export default function TaskDetailPage() {
   async function deleteProgress() {
     if (!deleteProgressId) return;
     // 通过重新添加无法删除，这里用专用行为：直接调用 PATCH 不支持，改用后端接口
-    const res = await fetch(`/api/tasks/${id}/progress?id=${deleteProgressId}`, {
+    const res = await api(`/api/tasks/${id}/progress?id=${deleteProgressId}`, {
       method: 'DELETE'
     });
     const json = await res.json();
@@ -205,7 +206,7 @@ export default function TaskDetailPage() {
     setReportDegraded(false);
     setReportReason('');
     try {
-      const res = await fetch('/api/reports', {
+      const res = await api('/api/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

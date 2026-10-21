@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Empty, Loading } from '@/components/ui';
 import { useShell } from '@/components/Shell';
+import { api } from '@/lib/api-client';
 
 interface Noti {
   id: number;
@@ -37,8 +38,8 @@ export default function NotificationsPage() {
   async function load() {
     try {
       const [nRes, sRes] = await Promise.all([
-        fetch('/api/notifications'),
-        fetch('/api/notifications?mode=scan')
+        api('/api/notifications'),
+        api('/api/notifications?mode=scan')
       ]);
       const nJson = await nRes.json();
       const sJson = await sRes.json();
@@ -59,7 +60,7 @@ export default function NotificationsPage() {
   }, []);
 
   async function markAll() {
-    await fetch('/api/notifications', {
+    await api('/api/notifications', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'markSeen', ids: 'all' })
@@ -70,7 +71,7 @@ export default function NotificationsPage() {
   }
 
   async function runJob() {
-    const res = await fetch('/api/notifications', {
+    const res = await api('/api/notifications', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'runJob' })

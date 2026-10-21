@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
 import { applySchema } from './schema';
+import { registerDb } from './db-registry';
 import type { DbLike } from './db-types';
 
 /**
@@ -119,23 +120,13 @@ export function dataDir(): string {
 }
 
 // ---------- 通用设置读写 ----------
-export function getSetting(key: string, fallback = ''): string {
-  const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(key) as
-    | { value: string }
-    | undefined;
-  return row?.value ?? fallback;
-}
+// 实现已统一到 db-registry.ts（服务端与手机端共用一份），这里转出口保持历史 import 可用
+export { getSetting, setSetting, getSettings } from './db-registry';
 
-export function setSetting(key: string, value: string) {
-  getDb()
-    .prepare(
-      'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
-    )
-    .run(key, value);
-}
-
-export function getSettings(keys: string[]): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const k of keys) out[k] = getSetting(k, '');
-  return out;
-}
+/**
+ * 向同构层注册服务端实现。
+ *
+ * 业务模块统一从 db-registry 取库，因此本模块必须在服务端启动时被求值一次，
+ * 由 src/instrumentation.ts 负责；直接 import db.ts 的地方（健康检查、设置页）也会自然触发。
+ */
+registerDb(getDb);

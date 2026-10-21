@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useShell } from '@/components/Shell';
 import type { TaskDto } from '@/types';
 import { isoWeek, monthRange, halfYearRange, yearRange, ymd, parseYmd } from '@/lib/date';
+import { api } from '@/lib/api-client';
 
 type Scope = 'single' | 'week' | 'month' | 'half_year' | 'year' | 'custom';
 
@@ -55,7 +56,7 @@ export default function NewReportPage() {
       setWeekAnchor(parseYmd(w));
     }
 
-    fetch('/api/settings')
+    api('/api/settings')
       .then((r) => r.json())
       .then((j) => j.ok && setLlmOk(j.data.llmConfigured))
       .catch(() => setLlmOk(false));
@@ -63,7 +64,7 @@ export default function NewReportPage() {
 
   useEffect(() => {
     if (scope !== 'single') return;
-    fetch('/api/tasks?status=all&limit=200&sort=updated')
+    api('/api/tasks?status=all&limit=200&sort=updated')
       .then((r) => r.json())
       .then((j) => j.ok && setTasks(j.data.rows))
       .catch(() => {});
@@ -124,7 +125,7 @@ export default function NewReportPage() {
             ? `/api/reports?week=${weekParam}`
             : '/api/reports';
 
-      const res = await fetch(url, {
+      const res = await api(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)

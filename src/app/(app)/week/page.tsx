@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Loading, Empty, DueChip, PriorityChip, StatusChip, TagPills } from '@/components/ui';
 import { useShell } from '@/components/Shell';
 import type { TaskDto, CurrentUser } from '@/types';
+import { api } from '@/lib/api-client';
 
 interface Bucket {
   weekStart: string;
@@ -117,7 +118,7 @@ export default function WeekPage() {
     try {
       const q = new URLSearchParams({ offset: String(offset), trend: '8' });
       if (owner !== 'all') q.set('owner', owner);
-      const res = await fetch(`/api/week?${q}`);
+      const res = await api(`/api/week?${q}`);
       const json = await res.json();
       if (json.ok) {
         setBucket(json.data.bucket);
@@ -136,7 +137,7 @@ export default function WeekPage() {
 
   useEffect(() => {
     if (!isAdmin) return;
-    fetch('/api/users')
+    api('/api/users')
       .then((r) => r.json())
       .then((j) => j.ok && setUsers(j.data))
       .catch(() => {});

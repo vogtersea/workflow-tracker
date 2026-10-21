@@ -1,5 +1,6 @@
 import type { DbLike, SnapshotHook } from './db-types';
 import { applySchema } from './schema';
+import { registerDb } from './db-registry';
 
 /**
  * 数据库（浏览器 / 手机端实现）
@@ -252,28 +253,12 @@ export function dataDir(): string {
   return `indexeddb://${IDB_NAME}`;
 }
 
-// ---------- 通用设置读写（与服务端同名同语义） ----------
+/** 向同构层注册浏览器实现；业务模块据此在手机端也能拿到库 */
+registerDb(getDb);
 
-export function getSetting(key: string, fallback = ''): string {
-  const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(key) as
-    | { value: string }
-    | undefined;
-  return row?.value ?? fallback;
-}
-
-export function setSetting(key: string, value: string) {
-  getDb()
-    .prepare(
-      'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
-    )
-    .run(key, value);
-}
-
-export function getSettings(keys: string[]): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const k of keys) out[k] = getSetting(k, '');
-  return out;
-}
+// ---------- 通用设置读写 ----------
+// 实现统一在 db-registry.ts，与 db.ts 共用同一份，避免两端漂移
+export { getSetting, setSetting, getSettings } from './db-registry';
 
 // ---------- 备份 / 恢复 ----------
 

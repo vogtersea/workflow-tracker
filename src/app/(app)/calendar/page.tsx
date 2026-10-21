@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Loading } from '@/components/ui';
 import type { TaskDto } from '@/types';
+import { api } from '@/lib/api-client';
 
 export default function CalendarPage() {
   const now = new Date();
@@ -16,7 +17,7 @@ export default function CalendarPage() {
     async function load() {
       setLoading(true);
       try {
-        const res = await fetch('/api/tasks?status=all&limit=500');
+        const res = await api('/api/tasks?status=all&limit=500');
         const json = await res.json();
         if (json.ok) setTasks(json.data.rows.filter((t: TaskDto) => t.due_date));
       } catch {

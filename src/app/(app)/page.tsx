@@ -1,53 +1,76 @@
-import { getCurrentUser } from '@/lib/auth';
-import { dashboardStats, queryTasks } from '@/lib/tasks';
+'use client';
+
+import { useEffect, useState } from 'react';
 import { isoWeek, today, ymd, cnDate } from '@/lib/date';
-import { generateFromTemplates } from '@/lib/templates';
 import Link from 'next/link';
 import { DueChip, PriorityChip, TagPills, Empty } from '@/components/ui';
+import type { TaskRow } from '@/lib/tasks';
+import type { SessionUser } from '@/lib/auth';
+import { apiJson } from '@/lib/api-client';
+import { ensureBooted } from '@/lib/local-boot';
 
-export const dynamic = 'force-dynamic';
+interface DashStats {
+  open: number;
+  overdue: number;
+  dueSoon: number;
+  todayDue: number;
+  doneThisWeek: number;
+  archived: number;
+  noProgress: number;
+}
 
-export default async function DashboardPage() {
-  const user = await getCurrentUser();
-  if (!user) return null;
+interface WeekInfo {
+  year: number;
+  week: number;
+  start: string;
+  end: string;
+  label: string;
+}
 
-  try {
-    generateFromTemplates();
-  } catch (e) {
-    console.error('[templates]', e);
+interface DashData {
+  user: SessionUser;
+  stats: DashStats;
+  week: WeekInfo;
+  urgent: TaskRow[];
+  recent: TaskRow[];
+  doneWeek: TaskRow[];
+  today: string;
+}
+
+export default function DashboardPage() {
+  const [data, setData] = useState<DashData | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        await ensureBooted();
+        const r = await apiJson<DashData>('/api/dashboard');
+        if (!alive) return;
+        if (r.ok && r.data) setData(r.data);
+        else setError(r.error || '加载失败');
+      } catch (e) {
+        if (alive) setError(e instanceof Error ? e.message : '加载失败');
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (!data) {
+    return (
+      <div className="panel">
+        <div className="panel-body" style={{ color: 'var(--ink-400)', fontSize: 13 }}>
+          {error || '正在加载工作台…'}
+        </div>
+      </div>
+    );
   }
 
-  const scope = user.role === 'admin' ? null : user.id;
-  const stats = dashboardStats(scope);
-  const week = isoWeek();
-
-  // 重点待办：逾期 + 今日 + 3天内
-  const { rows: urgent } = queryTasks({
-    status: 'open',
-    restrictToOwner: scope ?? undefined,
-    dueTo: ymd(new Date(Date.now() + 3 * 86400000)),
-    limit: 8,
-    sort: 'due'
-  });
-
-  const { rows: recent } = queryTasks({
-    status: 'open',
-    restrictToOwner: scope ?? undefined,
-    limit: 6,
-    sort: 'updated'
-  });
-
-  const { rows: doneWeek } = queryTasks({
-    status: 'all',
-    restrictToOwner: scope ?? undefined,
-    rangeStart: week.start,
-    rangeEnd: week.end,
-    limit: 5,
-    sort: 'updated'
-  });
-
-  const doneThisWeekItems = doneWeek.filter((t) => t.status !== 'open');
-  const total = stats.open + doneThisWeekItems.length + stats.overdue;
+  const { user, stats, week, urgent, recent, doneWeek } = data;
+  const doneThisWeekItems = doneWeek;
   const completionRate =
     stats.open + stats.doneThisWeek > 0
       ? Math.round((stats.doneThisWeek / (stats.open + stats.doneThisWeek)) * 100)

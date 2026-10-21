@@ -4,6 +4,28 @@
 
 ---
 
+## 界面预览
+
+桌面端：
+
+![工作台](docs/screenshots/desktop-dashboard.png)
+
+![工作管理](docs/screenshots/desktop-tasks.png)
+
+手机端（侧边栏收起为抽屉，宽表自动转为卡片）：
+
+| 工作台 | 侧边栏 | 工作列表 |
+|---|---|---|
+| ![手机工作台](docs/screenshots/mobile-dashboard.png) | ![手机侧边栏](docs/screenshots/mobile-drawer.png) | ![手机工作列表](docs/screenshots/mobile-tasks.png) |
+
+| 日历 | 工作详情 |
+|---|---|
+| ![手机日历](docs/screenshots/mobile-calendar.png) | ![手机工作详情](docs/screenshots/mobile-task-detail.png) |
+
+> 截图中的数据均为通用示例，由 `scripts/seed-demo.cjs` 生成。
+
+---
+
 ## 一、功能概览
 
 ### 工作管理
@@ -75,6 +97,11 @@
 ### 多用户与权限
 - 两级角色：**管理员**（管理用户、查看全部工作、修改系统配置）、**成员**（仅查看与操作分配给自己的工作）
 - 密码 scrypt 加盐哈希，会话存 cookie + 服务端校验表，支持强制下线
+
+### 响应式界面
+- 桌面、平板、手机三档自适应，同一套代码无需单独维护移动端
+- 窄屏下侧边栏收起为抽屉（汉堡按钮唤出，点遮罩或按 ESC 关闭），宽表自动转为卡片列表
+- 手机上无需横向拖动即可完成查看、登记进展、销号等日常操作
 
 ---
 

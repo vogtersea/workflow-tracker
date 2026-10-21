@@ -1,7 +1,7 @@
 # ============ 构建阶段 ============
 # 说明：本文件使用 BuildKit 缓存挂载（RUN --mount=type=cache）。
 # Docker 23 及以上默认启用 BuildKit，Docker 26 起已移除经典构建器，
-# Docker 23 及以上无需任何额外配置。
+# 因此无需任何额外配置。
 # 若使用更老的 Docker，请改用 Dockerfile.nobuildkit（等价功能，无缓存加速）。
 FROM node:24-alpine AS builder
 

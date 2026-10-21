@@ -152,7 +152,7 @@ node build/windows/build-windows.mjs --installer     # 顺带生成 Setup.exe（
 ## 四、NAS 部署
 
 ### 前置条件
-- 目标机器为 x86_64 架构，Linux 内核，已装 Docker
+- x86_64 或 ARM64 架构，Linux 内核
 - 已安装 Docker 与 Docker Compose 插件
 
 ### 部署步骤

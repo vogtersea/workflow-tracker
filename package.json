@@ -13,6 +13,7 @@
     "seed": "node scripts/seed.mjs"
   },
   "dependencies": {
+    "@sqlite.org/sqlite-wasm": "^3.54.1-build1",
     "date-fns": "^4.1.0",
     "docx": "^9.5.1",
     "next": "15.5.4",

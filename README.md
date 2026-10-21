@@ -12,6 +12,8 @@
 
 ![工作管理](docs/screenshots/desktop-tasks.png)
 
+![周视图](docs/screenshots/desktop-week.png)
+
 手机端（侧边栏收起为抽屉，宽表自动转为卡片）：
 
 | 工作台 | 侧边栏 | 工作列表 |

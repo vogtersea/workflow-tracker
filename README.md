@@ -99,6 +99,12 @@
 
 交付物是**单个安装程序 `WorkflowTracker-Desktop-Setup-1.0.0.exe`**（121 MB），双击安装，之后从开始菜单或桌面启动。**这是独立桌面窗口程序，不在浏览器里打开**：有自己的图标、任务栏项、窗口菜单，没有地址栏。
 
+**下载地址**：安装包超过 GitHub 单文件 100 MB 限制，因此放在 Release 附件里，不在仓库文件树中。
+
+- 桌面版（推荐）：[WorkflowTracker-Desktop-Setup-1.0.0.exe](https://github.com/vogtersea/workflow-tracker/releases/download/v1.0.0-p2/WorkflowTracker-Desktop-Setup-1.0.0.exe)
+- 服务版（可选）：[WorkflowTracker-Setup-1.0.0.exe](https://github.com/vogtersea/workflow-tracker/releases/download/v1.0.0-p2/WorkflowTracker-Setup-1.0.0.exe)
+- 版本页面：[Releases · v1.0.0-p2](https://github.com/vogtersea/workflow-tracker/releases/tag/v1.0.0-p2)
+
 运行不依赖 Docker、不依赖 Node、不需要管理员权限；数据落在本机 `%APPDATA%\工作流程跟踪工作台\data`。
 
 ### 使用方式

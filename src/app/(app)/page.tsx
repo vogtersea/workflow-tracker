@@ -119,7 +119,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr', gap: 16, alignItems: 'start' }}>
+      <div className="dash-cols">
         {/* 重点待办 */}
         <div className="panel">
           <div className="panel-header">

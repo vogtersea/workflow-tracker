@@ -171,7 +171,7 @@ export default function NewReportPage() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 16, alignItems: 'start' }}>
+      <div className="split split-side-wide">
         {/* 左侧配置 */}
         <div className="panel">
           <div className="panel-header">

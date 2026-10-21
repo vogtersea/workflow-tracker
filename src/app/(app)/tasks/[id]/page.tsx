@@ -256,7 +256,7 @@ export default function TaskDetailPage() {
         <span style={{ fontSize: 12.5, color: 'var(--ink-500)' }}>工作详情</span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, alignItems: 'start' }}>
+      <div className="split split-main">
         {/* 左侧主体 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="panel">

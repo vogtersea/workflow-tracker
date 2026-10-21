@@ -200,7 +200,7 @@ export default function ObsidianPage() {
           )}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 16, alignItems: 'start' }}>
+        <div className="split split-side-320">
           <div className="panel">
             <div className="panel-header">
               <div className="panel-title">目录概览</div>

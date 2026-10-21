@@ -320,7 +320,7 @@ export default function WeekPage() {
           )}
 
           {/* 四个分桶 */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
+          <div className="split split-even">
             {SECTIONS.map((sec) => {
               const list = (bucket[sec.key] as TaskDto[]) || [];
               return (

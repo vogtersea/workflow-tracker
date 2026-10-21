@@ -391,7 +391,7 @@ function TasksInner() {
         </div>
       ) : (
         <div className="panel scroll-x">
-          <table className="table">
+          <table className="table table-card">
             <thead>
               <tr>
                 <th style={{ minWidth: 260 }}>工作名称</th>
@@ -408,7 +408,7 @@ function TasksInner() {
             <tbody>
               {rows.map((t) => (
                 <tr key={t.id}>
-                  <td>
+                  <td data-label="">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Link
                         href={`/tasks/${t.id}`}
@@ -438,16 +438,16 @@ function TasksInner() {
                       </div>
                     )}
                   </td>
-                  <td>
+                  <td data-label="DDL">
                     <DueChip dueDate={t.due_date} status={t.status} />
                   </td>
-                  <td>
+                  <td data-label="优先级">
                     <PriorityChip priority={t.priority} />
                   </td>
-                  <td style={{ fontSize: 12.5, color: 'var(--ink-600)' }}>
+                  <td data-label="责任人" style={{ fontSize: 12.5, color: 'var(--ink-600)' }}>
                     {t.owner_name || '—'}
                   </td>
-                  <td>
+                  <td data-label="项目">
                     {t.project_name ? (
                       <span className="chip chip-tag">
                         <span className="dot" style={{ background: t.project_color || '#7f1d1d' }} />
@@ -457,14 +457,14 @@ function TasksInner() {
                       <span style={{ color: 'var(--ink-300)' }}>—</span>
                     )}
                   </td>
-                  <td>{t.tags?.length ? <TagPills tags={t.tags} /> : <span style={{ color: 'var(--ink-300)' }}>—</span>}</td>
-                  <td style={{ fontSize: 12, color: 'var(--ink-500)' }}>
+                  <td data-label="标签">{t.tags?.length ? <TagPills tags={t.tags} /> : <span style={{ color: 'var(--ink-300)' }}>—</span>}</td>
+                  <td data-label="进展" style={{ fontSize: 12, color: 'var(--ink-500)' }}>
                     {t.progress_count ?? 0} 条
                   </td>
-                  <td>
+                  <td data-label="状态">
                     <StatusChip status={t.status} />
                   </td>
-                  <td>
+                  <td data-label="">
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                       <Link href={`/tasks/${t.id}`} className="btn btn-sm btn-ghost">
                         详情

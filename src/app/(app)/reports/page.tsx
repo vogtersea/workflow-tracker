@@ -101,7 +101,7 @@ export default function ReportsPage() {
         </div>
       ) : (
         <div className="panel scroll-x">
-          <table className="table">
+          <table className="table table-card">
             <thead>
               <tr>
                 <th>报告标题</th>
@@ -115,7 +115,7 @@ export default function ReportsPage() {
             <tbody>
               {reports.map((r) => (
                 <tr key={r.id}>
-                  <td>
+                  <td data-label="">
                     <Link
                       href={`/reports/${r.id}`}
                       style={{ fontWeight: 600, color: 'var(--ink-900)', fontSize: 13.5 }}
@@ -123,17 +123,17 @@ export default function ReportsPage() {
                       {r.title}
                     </Link>
                   </td>
-                  <td>
+                  <td data-label="类型">
                     <span className="chip chip-tag">{SCOPE_LABEL[r.scope] || r.scope}</span>
                   </td>
-                  <td style={{ fontSize: 12, color: 'var(--ink-500)' }}>
+                  <td data-label="区间" style={{ fontSize: 12, color: 'var(--ink-500)' }}>
                     {r.range_start && r.range_end ? `${r.range_start} ~ ${r.range_end}` : '—'}
                   </td>
-                  <td style={{ fontSize: 12.5, color: 'var(--ink-600)' }}>{r.author || '—'}</td>
-                  <td style={{ fontSize: 12, color: 'var(--ink-400)' }}>
+                  <td data-label="生成人" style={{ fontSize: 12.5, color: 'var(--ink-600)' }}>{r.author || '—'}</td>
+                  <td data-label="时间" style={{ fontSize: 12, color: 'var(--ink-400)' }}>
                     {r.created_at.slice(0, 16)}
                   </td>
-                  <td>
+                  <td data-label="">
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                       <a
                         href={`/api/reports/${r.id}/export?format=docx`}

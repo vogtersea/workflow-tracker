@@ -113,6 +113,7 @@ select {
 .sidebar-brand {
   padding: 22px 20px 18px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  position: relative;
 }
 
 .sidebar-brand-title {
@@ -331,6 +332,26 @@ select {
   gap: 12px;
   margin-bottom: 20px;
 }
+
+/* 工作台底部两栏 */
+.dash-cols {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+/* 通用分栏：桌面多栏、窄屏自动堆叠 */
+.split {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+}
+.split-side { grid-template-columns: 300px 1fr; }
+.split-side-wide { grid-template-columns: 340px 1fr; }
+.split-side-320 { grid-template-columns: 320px 1fr; }
+.split-even { grid-template-columns: 1fr 1fr; }
+.split-main { grid-template-columns: 1.4fr 1fr; }
 
 .stat-card {
   background: var(--panel);
@@ -1110,23 +1131,236 @@ select {
   border: 1px solid #bbf7d0;
 }
 
-.scroll-x { overflow-x: auto; }
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ============ 移动端：侧边栏抽屉 ============ */
+/* 汉堡按钮仅窄屏出现，桌面端隐藏 */
+.mobile-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ink-700);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-menu-btn:active {
+  background: var(--ink-50);
+}
+
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(28, 12, 8, 0.42);
+  z-index: 39;
+  animation: wt-fade 0.18s ease;
+}
+
+.sidebar-close {
+  display: none;
+  position: absolute;
+  top: 14px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 240, 225, 0.85);
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+@keyframes wt-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
 @media (max-width: 900px) {
   .sidebar {
+    width: 268px;
     transform: translateX(-100%);
-    transition: transform 0.25s;
+    transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+    box-shadow: 0 12px 44px rgba(0, 0, 0, 0.34);
+    will-change: transform;
   }
   .sidebar.open { transform: translateX(0); }
+  .sidebar-close { display: block; }
+  .sidebar-backdrop { display: block; }
+
+  .mobile-menu-btn { display: inline-flex; }
+
   .main-area { margin-left: 0; }
-  .content { padding: 16px; }
-  .topbar { padding: 0 16px; }
+  .content { padding: 16px 14px 44px; }
+  .topbar { padding: 0 12px; height: 52px; gap: 10px; }
+  .page-title { font-size: 15px; }
+
   .form-row, .form-row-3 { grid-template-columns: 1fr; }
   .search-input { width: 100%; }
+  .dash-cols { grid-template-columns: 1fr; }
+  .split { grid-template-columns: 1fr; }
+  /* 中等宽度用 3 列，避免 5 张卡时落单 */
+  .stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+  /* 工具栏在触屏上换行更自然，控件占满可用宽度 */
+  .toolbar { gap: 8px; }
+  .toolbar > .select,
+  .toolbar > .input {
+    width: auto !important;
+    flex: 1 1 132px;
+    min-width: 0;
+  }
+  .toolbar-spacer { display: none; }
+  .toolbar > .btn { margin-left: auto; }
+}
+
+@media (max-width: 640px) {
+  .content { padding: 12px 10px 40px; }
+
+  .stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .stat-card { padding: 12px 12px 13px; }
+  /* 奇数个统计卡时，最后一张通栏，避免落单 */
+  .stat-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .stat-value { font-size: 22px; }
+  .stat-label { font-size: 11px; margin-bottom: 4px; }
+  .stat-hint { font-size: 10.5px; }
+
+  .panel-header { padding: 11px 13px; flex-wrap: wrap; }
+  .panel-title { font-size: 13.5px; }
+  .panel-body { padding: 13px; }
+
+  /* iOS 上 16px 以下会触发自动放大 */
+  .input, .select, .search-input input, textarea { font-size: 16px; }
+
+  .btn { min-height: 40px; }
+  .btn-sm { min-height: 34px; }
+  .mobile-menu-btn { width: 40px; height: 40px; }
+
+  .chip { font-size: 11px; padding: 2px 7px; }
+
+  .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tabs::-webkit-scrollbar { display: none; }
+
+  .modal-backdrop { padding: 10px; }
+  .modal {
+    max-width: 100%;
+    width: 100%;
+    margin: 0;
+    max-height: calc(100dvh - 20px);
+    border-radius: 12px;
+  }
+  .modal-header, .modal-body, .modal-footer { padding-left: 14px; padding-right: 14px; }
+  .modal-footer { flex-wrap: wrap; }
+  .modal-footer .btn { flex: 1 1 120px; }
+
+  .toast {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    max-width: none;
+    text-align: center;
+    transform: none;
+  }
+
+  .page-title { font-size: 14.5px; }
+  .topbar-actions { gap: 6px; }
+}
+
+/* 窄屏下把宽表格转成卡片，避免横向滚动找不着北 */
+@media (max-width: 700px) {
+  .table-card {
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 12.5px;
+  }
+  .table-card thead { display: none; }
+  .table-card tbody { display: block; }
+  .table-card tbody tr {
+    display: block;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: 11px 13px;
+    margin-bottom: 9px;
+  }
+  .table-card tbody tr:hover { background: var(--panel); }
+  .table-card tbody tr:last-child td { border-bottom: none; }
+  .table-card td {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    width: auto !important;
+    min-width: 0 !important;
+    padding: 3px 0 !important;
+    border-bottom: none;
+    vertical-align: top;
+  }
+  .table-card td::before {
+    content: attr(data-label);
+    flex: 0 0 58px;
+    font-size: 11.5px;
+    color: var(--ink-400);
+    padding-top: 1px;
+    white-space: nowrap;
+  }
+  .table-card td[data-label='']::before { display: none; }
+  /* 首列（标题）整块展示，标题与完成条件上下排列 */
+  .table-card td[data-label=''] {
+    display: block;
+    padding-top: 0 !important;
+    padding-bottom: 8px !important;
+  }
+  /* 标题行突出显示 */
+  .table-card td[data-label=''] a { font-size: 14px !important; }
+}
+
+/* 日历：窄屏压缩格子高度与内边距 */
+.cal-cell {
+  min-height: 96px;
+  border-right: 1px solid var(--ink-100);
+  border-bottom: 1px solid var(--ink-100);
+  /* 网格项默认 min-width:auto 会被长标题撑开，导致文字串格 */
+  min-width: 0;
+  overflow: hidden;
+}
+
+.cal-cell .cal-task {
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  .cal-cell {
+    min-height: 62px;
+    padding: 3px 3px !important;
+  }
+  .cal-cell .cal-daynum { font-size: 11px !important; margin-bottom: 2px !important; }
+  .cal-cell .cal-task {
+    font-size: 9.5px !important;
+    padding: 1px 3px !important;
+    border-radius: 2px !important;
+  }
 }
 
 @media print {
-  .sidebar, .topbar, .no-print { display: none !important; }
+  .sidebar, .topbar, .mobile-menu-btn, .sidebar-backdrop, .no-print { display: none !important; }
   .main-area { margin-left: 0; }
   .content { padding: 0; max-width: none; }
   .panel { border: none; box-shadow: none; }

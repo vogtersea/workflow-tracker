@@ -140,12 +140,8 @@ export default function CalendarPage() {
               return (
                 <div
                   key={cell.key}
-                  style={{
-                    minHeight: 96,
-                    borderRight: '1px solid var(--ink-100)',
-                    borderBottom: '1px solid var(--ink-100)',
-                    background: '#fcfbf9'
-                  }}
+                  className="cal-cell"
+                  style={{ background: '#fcfbf9' }}
                 />
               );
             }
@@ -156,17 +152,16 @@ export default function CalendarPage() {
             return (
               <div
                 key={cell.key}
+                className="cal-cell"
                 style={{
-                  minHeight: 96,
                   padding: '6px 7px',
-                  borderRight: '1px solid var(--ink-100)',
-                  borderBottom: '1px solid var(--ink-100)',
                   background: isToday ? 'var(--red-50)' : isWeekend ? '#fdfcfa' : '#fff',
                   outline: isToday ? '1px solid var(--red-600)' : 'none',
                   outlineOffset: -1
                 }}
               >
                 <div
+                  className="cal-daynum"
                   style={{
                     fontSize: 12,
                     fontWeight: isToday ? 700 : 500,
@@ -186,6 +181,7 @@ export default function CalendarPage() {
                         key={t.id}
                         href={`/tasks/${t.id}`}
                         title={t.title}
+                        className="cal-task"
                         style={{
                           fontSize: 10.5,
                           padding: '2px 5px',

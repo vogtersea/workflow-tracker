@@ -172,7 +172,7 @@ export default function TemplatesPage() {
         </div>
       ) : (
         <div className="panel scroll-x">
-          <table className="table">
+          <table className="table table-card">
             <thead>
               <tr>
                 <th>工作名称</th>
@@ -189,7 +189,7 @@ export default function TemplatesPage() {
                 const ps = PERIOD_STATUS[t.period_status] || PERIOD_STATUS.none;
                 return (
                   <tr key={t.id}>
-                    <td>
+                    <td data-label="">
                       <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--ink-900)' }}>
                         {t.title}
                       </div>
@@ -199,11 +199,11 @@ export default function TemplatesPage() {
                         </div>
                       )}
                     </td>
-                    <td>
+                    <td data-label="周期">
                       <span className="chip chip-gold">{cadenceLabel(t.cadence)}</span>
                     </td>
-                    <td style={{ fontSize: 12, color: 'var(--ink-600)' }}>{t.rule_text}</td>
-                    <td>
+                    <td data-label="到期规则" style={{ fontSize: 12, color: 'var(--ink-600)' }}>{t.rule_text}</td>
+                    <td data-label="本周期">
                       <div style={{ fontSize: 12.5, color: 'var(--ink-800)' }}>
                         {t.current_label}
                       </div>
@@ -223,13 +223,13 @@ export default function TemplatesPage() {
                         <span>到期 {t.period_due}</span>
                       </div>
                     </td>
-                    <td style={{ fontSize: 12.5 }}>{t.owner_name || '—'}</td>
-                    <td>
+                    <td data-label="责任人" style={{ fontSize: 12.5 }}>{t.owner_name || '—'}</td>
+                    <td data-label="状态">
                       <span className={`chip ${t.enabled ? 'chip-ok' : 'chip-muted'}`}>
                         {t.enabled ? '启用' : '停用'}
                       </span>
                     </td>
-                    <td>
+                    <td data-label="">
                       <div style={{ display: 'flex', gap: 4 }}>
                         <button className="btn btn-sm btn-ghost" onClick={() => toggle(t.id, t.enabled)}>
                           {t.enabled ? '停用' : '启用'}

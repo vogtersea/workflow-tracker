@@ -74,8 +74,9 @@ function LoginForm() {
         </form>
 
         <div style={{ marginTop: 20, fontSize: 11.5, color: 'var(--ink-400)', lineHeight: 1.8 }}>
-          首次启动默认管理员账号 <code style={{ color: 'var(--ink-600)' }}>admin</code>，密码
-          <code style={{ color: 'var(--ink-600)' }}> admin123456</code>，登录后请立即修改。
+          管理员账号 <code style={{ color: 'var(--ink-600)' }}>admin</code>，
+          初始密码由系统随机生成，见数据目录下的
+          <code style={{ color: 'var(--ink-600)' }}> 初始密码.txt</code>，登录后请立即修改。
         </div>
       </div>
     </div>

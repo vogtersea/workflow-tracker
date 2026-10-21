@@ -133,7 +133,7 @@ export default function UsersPage() {
       </div>
 
       <div className="panel scroll-x">
-        <table className="table">
+        <table className="table table-card">
           <thead>
             <tr>
               <th>姓名</th>
@@ -147,24 +147,24 @@ export default function UsersPage() {
           <tbody>
             {rows.map((u) => (
               <tr key={u.id}>
-                <td style={{ fontWeight: 600, fontSize: 13.5 }}>{u.display_name}</td>
-                <td style={{ fontSize: 12.5, fontFamily: 'monospace', color: 'var(--ink-600)' }}>
+                <td data-label="" style={{ fontWeight: 600, fontSize: 13.5 }}>{u.display_name}</td>
+                <td data-label="用户名" style={{ fontSize: 12.5, fontFamily: 'monospace', color: 'var(--ink-600)' }}>
                   {u.username}
                 </td>
-                <td>
+                <td data-label="角色">
                   <span className={`chip ${u.role === 'admin' ? 'chip-red' : 'chip-tag'}`}>
                     {u.role === 'admin' ? '管理员' : '成员'}
                   </span>
                 </td>
-                <td>
+                <td data-label="状态">
                   <span className={`chip ${u.active ? 'chip-ok' : 'chip-muted'}`}>
                     {u.active ? '正常' : '已停用'}
                   </span>
                 </td>
-                <td style={{ fontSize: 11.5, color: 'var(--ink-400)' }}>
+                <td data-label="创建时间" style={{ fontSize: 11.5, color: 'var(--ink-400)' }}>
                   {u.created_at.slice(0, 10)}
                 </td>
-                <td>
+                <td data-label="">
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                     <button className="btn btn-sm btn-ghost" onClick={() => setPwdUser(u)}>
                       重置密码

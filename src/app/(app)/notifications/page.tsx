@@ -127,7 +127,7 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
+      <div className="split split-even">
         <div className="panel">
           <div className="panel-header">
             <div className="panel-title">待办清单</div>

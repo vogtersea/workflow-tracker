@@ -122,6 +122,21 @@ export default function Shell({
     setMobileOpen(false);
   }, [pathname]);
 
+  // 抽屉打开时锁定页面滚动，避免背景跟着滑动
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMobileOpen(false);
+    }
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [mobileOpen]);
+
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.replace('/login');
@@ -146,10 +161,20 @@ export default function Shell({
   return (
     <ShellContext.Provider value={{ user, refreshBadges, toast }}>
       <div className="app-shell">
+        {mobileOpen && (
+          <div className="sidebar-backdrop" onClick={() => setMobileOpen(false)} />
+        )}
         <aside className={`sidebar ${mobileOpen ? 'open' : ''}`}>
           <div className="sidebar-brand">
             <div className="sidebar-brand-title">工作流程跟踪</div>
             <div className="sidebar-brand-sub">Workflow Tracker</div>
+            <button
+              className="sidebar-close"
+              onClick={() => setMobileOpen(false)}
+              aria-label="关闭菜单"
+            >
+              ×
+            </button>
           </div>
 
           <nav className="sidebar-nav">
@@ -220,9 +245,9 @@ export default function Shell({
         <div className="main-area">
           <header className="topbar">
             <button
-              className="btn btn-ghost btn-sm"
-              onClick={() => setMobileOpen(!mobileOpen)}
-              style={{ display: 'none' }}
+              className="mobile-menu-btn"
+              onClick={() => setMobileOpen(true)}
+              aria-label="打开菜单"
             >
               ☰
             </button>

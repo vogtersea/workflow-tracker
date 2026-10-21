@@ -84,7 +84,7 @@ export default function TagsPage() {
   if (loading) return <Loading />;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 16, alignItems: 'start' }}>
+    <div className="split split-side">
       <div className="panel">
         <div className="panel-header">
           <div className="panel-title">新建标签</div>
@@ -135,7 +135,7 @@ export default function TagsPage() {
           </div>
         </div>
         {tags.length === 0 ? (
-          <Empty title="暂无标签" desc="在左侧创建标签，用于工作分类与报告归纳" />
+          <Empty title="暂无标签" desc="新建标签，用于工作分类与报告归纳" />
         ) : (
           <div className="scroll-x">
             <table className="table">

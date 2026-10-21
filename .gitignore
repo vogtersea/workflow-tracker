@@ -2,6 +2,7 @@ node_modules/
 .next/
 .next-old-*/
 .next-bak-*/
+.next-dev-*/
 out/
 data/
 *.db

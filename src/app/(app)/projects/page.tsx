@@ -154,7 +154,7 @@ export default function ProjectsPage() {
         </label>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 16, alignItems: 'start' }}>
+      <div className="split split-side">
         <div className="panel">
           <div className="panel-header">
             <div className="panel-title">新建项目</div>
@@ -219,10 +219,10 @@ export default function ProjectsPage() {
             </div>
           </div>
           {projects.length === 0 ? (
-            <Empty title="暂无项目" desc="在左侧创建项目，用于把零散工作归入同一条线" />
+            <Empty title="暂无项目" desc="新建项目，用于把零散工作归入同一条线" />
           ) : (
             <div className="scroll-x">
-              <table className="table">
+              <table className="table table-card">
                 <thead>
                   <tr>
                     <th>项目</th>
@@ -239,7 +239,7 @@ export default function ProjectsPage() {
                     const pct = total ? Math.round((done / total) * 100) : 0;
                     return (
                       <tr key={p.id}>
-                        <td>
+                        <td data-label="">
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span className="dot" style={{ background: p.color }} />
                             <span style={{ fontWeight: 600, color: 'var(--ink-900)', fontSize: 13.5 }}>
@@ -257,10 +257,10 @@ export default function ProjectsPage() {
                             </div>
                           )}
                         </td>
-                        <td style={{ fontSize: 12.5, color: 'var(--ink-500)' }}>
+                        <td data-label="说明" style={{ fontSize: 12.5, color: 'var(--ink-500)' }}>
                           {p.description || '—'}
                         </td>
-                        <td>
+                        <td data-label="进度">
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <div
                               style={{
@@ -289,10 +289,10 @@ export default function ProjectsPage() {
                             </div>
                           )}
                         </td>
-                        <td style={{ fontSize: 12, color: 'var(--ink-500)' }}>
+                        <td data-label="最近完成" style={{ fontSize: 12, color: 'var(--ink-500)' }}>
                           {p.last_done_at ? p.last_done_at.slice(0, 10) : '—'}
                         </td>
-                        <td>
+                        <td data-label="">
                           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                             <Link href={`/tasks?project=${p.id}`} className="btn btn-sm btn-ghost">
                               查看工作

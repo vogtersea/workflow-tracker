@@ -75,6 +75,9 @@ export default async function DashboardPage() {
           </div>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <Link href="/week" className="btn">
+            本周盘点
+          </Link>
           <Link href="/tasks?new=1" className="btn btn-primary">
             + 新增工作
           </Link>
@@ -184,6 +187,22 @@ export default async function DashboardPage() {
                       }}
                     >
                       {t.owner_name && <span>责任人：{t.owner_name}</span>}
+                      {t.project_name && (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            color: 'var(--red-700)'
+                          }}
+                        >
+                          <span
+                            className="dot"
+                            style={{ background: t.project_color || '#7f1d1d' }}
+                          />
+                          {t.project_name}
+                        </span>
+                      )}
                       <span>进展 {t.progress_count ?? 0} 条</span>
                       {t.tags?.length > 0 && <TagPills tags={t.tags} />}
                     </div>
@@ -254,6 +273,12 @@ export default async function DashboardPage() {
               <div className="panel-title">本周完成</div>
               <div style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--ink-400)' }}>
                 {week.start} ~ {week.end}
+                <Link
+                  href="/week"
+                  style={{ marginLeft: 10, color: 'var(--red-700)', fontWeight: 600 }}
+                >
+                  周视图 →
+                </Link>
               </div>
             </div>
             <div style={{ padding: doneThisWeekItems.length ? '4px 0' : 0 }}>

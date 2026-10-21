@@ -19,6 +19,21 @@ export interface TagDto {
   color: string;
 }
 
+export interface ProjectDto {
+  id: number;
+  name: string;
+  description: string;
+  color: string;
+  status: 'active' | 'archived';
+  created_at: string;
+  task_count?: number;
+  open_count?: number;
+  done_count?: number;
+  overdue_count?: number;
+  due_soon_count?: number;
+  last_done_at?: string | null;
+}
+
 export interface TaskDto {
   id: number;
   title: string;
@@ -32,6 +47,9 @@ export interface TaskDto {
   template_id: number | null;
   period_label: string | null;
   week_start: string | null;
+  project_id: number | null;
+  project_name?: string | null;
+  project_color?: string | null;
   done_at: string | null;
   archived_at: string | null;
   estimate_hours: number | null;

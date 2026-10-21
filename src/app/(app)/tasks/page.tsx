@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Modal, ConfirmDialog, Empty, Loading, DueChip, PriorityChip, StatusChip, TagPills } from '@/components/ui';
 import { useShell } from '@/components/Shell';
-import type { TaskDto, TagDto, CurrentUser, CadenceDto } from '@/types';
+import type { TaskDto, TagDto, CurrentUser, CadenceDto, ProjectDto } from '@/types';
 
 const PRIORITIES = [
   { value: 'urgent', label: '紧急' },
@@ -37,6 +37,8 @@ interface FormState {
   owner_id: string;
   tag_ids: number[];
   estimate_hours: string;
+  /** 所属项目 */
+  project_id: string;
   /** 例行工作周期 */
   cadence: CadenceDto;
   weekday: number;
@@ -55,6 +57,7 @@ const EMPTY_FORM: FormState = {
   owner_id: '',
   tag_ids: [],
   estimate_hours: '',
+  project_id: '',
   cadence: 'monthly',
   weekday: 5,
   month_day: 28,
@@ -72,10 +75,12 @@ function TasksInner() {
   const [loading, setLoading] = useState(true);
   const [tags, setTags] = useState<TagDto[]>([]);
   const [users, setUsers] = useState<CurrentUser[]>([]);
+  const [projects, setProjects] = useState<ProjectDto[]>([]);
 
   const [status, setStatus] = useState<'open' | 'done' | 'archived'>('open');
   const [keyword, setKeyword] = useState('');
   const [tagFilter, setTagFilter] = useState('');
+  const [projectFilter, setProjectFilter] = useState(params.get('project') || '');
   const [ownerFilter, setOwnerFilter] = useState('all');
   const [filter, setFilter] = useState(params.get('filter') || '');
 
@@ -93,6 +98,7 @@ function TasksInner() {
       const q = new URLSearchParams({ status, limit: '300' });
       if (keyword) q.set('q', keyword);
       if (tagFilter) q.set('tag', tagFilter);
+      if (projectFilter) q.set('project', projectFilter);
       if (ownerFilter !== 'all') q.set('owner', ownerFilter);
 
       const res = await fetch(`/api/tasks?${q}`);
@@ -125,7 +131,7 @@ function TasksInner() {
     } finally {
       setLoading(false);
     }
-  }, [status, keyword, tagFilter, ownerFilter, filter, toast]);
+  }, [status, keyword, tagFilter, projectFilter, ownerFilter, filter, toast]);
 
   useEffect(() => {
     load();
@@ -135,6 +141,10 @@ function TasksInner() {
     fetch('/api/tags')
       .then((r) => r.json())
       .then((j) => j.ok && setTags(j.data))
+      .catch(() => {});
+    fetch('/api/projects')
+      .then((r) => r.json())
+      .then((j) => j.ok && setProjects(j.data))
       .catch(() => {});
     if (isAdmin) {
       fetch('/api/users')
@@ -212,7 +222,8 @@ function TasksInner() {
         priority: form.priority,
         owner_id: form.owner_id ? Number(form.owner_id) : null,
         tag_ids: form.tag_ids,
-        estimate_hours: form.estimate_hours ? Number(form.estimate_hours) : null
+        estimate_hours: form.estimate_hours ? Number(form.estimate_hours) : null,
+        project_id: form.project_id ? Number(form.project_id) : null
       };
       const res = await fetch('/api/tasks', {
         method: 'POST',
@@ -297,6 +308,20 @@ function TasksInner() {
             </option>
           ))}
         </select>
+        <select
+          className="select"
+          style={{ width: 150 }}
+          value={projectFilter}
+          onChange={(e) => setProjectFilter(e.target.value)}
+        >
+          <option value="">全部项目</option>
+          <option value="0">未归入项目</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
         {isAdmin && (
           <select
             className="select"
@@ -315,6 +340,14 @@ function TasksInner() {
         {filter && (
           <button className="chip chip-red" onClick={() => setFilter('')}>
             {filter === 'overdue' ? '已逾期' : '临近到期'} ×
+          </button>
+        )}
+        {projectFilter && (
+          <button className="chip chip-gold" onClick={() => setProjectFilter('')}>
+            {projectFilter === '0'
+              ? '未归入项目'
+              : projects.find((p) => String(p.id) === projectFilter)?.name || '项目'}{' '}
+            ×
           </button>
         )}
         <div className="toolbar-spacer" />
@@ -365,6 +398,7 @@ function TasksInner() {
                 <th style={{ width: 100 }}>DDL</th>
                 <th style={{ width: 70 }}>优先级</th>
                 <th style={{ width: 90 }}>责任人</th>
+                <th style={{ width: 120 }}>项目</th>
                 <th style={{ width: 130 }}>标签</th>
                 <th style={{ width: 80 }}>进展</th>
                 <th style={{ width: 110 }}>状态</th>
@@ -412,6 +446,16 @@ function TasksInner() {
                   </td>
                   <td style={{ fontSize: 12.5, color: 'var(--ink-600)' }}>
                     {t.owner_name || '—'}
+                  </td>
+                  <td>
+                    {t.project_name ? (
+                      <span className="chip chip-tag">
+                        <span className="dot" style={{ background: t.project_color || '#7f1d1d' }} />
+                        {t.project_name}
+                      </span>
+                    ) : (
+                      <span style={{ color: 'var(--ink-300)' }}>—</span>
+                    )}
                   </td>
                   <td>{t.tags?.length ? <TagPills tags={t.tags} /> : <span style={{ color: 'var(--ink-300)' }}>—</span>}</td>
                   <td style={{ fontSize: 12, color: 'var(--ink-500)' }}>
@@ -692,6 +736,27 @@ function TasksInner() {
               </div>
             </div>
           )}
+
+          <div className="field">
+            <label className="field-label">所属项目</label>
+            <select
+              className="select"
+              value={form.project_id}
+              onChange={(e) => setForm({ ...form, project_id: e.target.value })}
+            >
+              <option value="">不归入项目</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <div className="field-hint">
+              {projects.length === 0
+                ? '可在「项目分组」中创建项目'
+                : '项目用于归入同一条工作线，标签用于分类，两者可同时使用'}
+            </div>
+          </div>
 
           <div className="field">
             <label className="field-label">标签</label>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useShell } from '@/components/Shell';
 import type { TaskDto } from '@/types';
-import { isoWeek, monthRange, halfYearRange, yearRange, ymd } from '@/lib/date';
+import { isoWeek, monthRange, halfYearRange, yearRange, ymd, parseYmd } from '@/lib/date';
 
 type Scope = 'single' | 'week' | 'month' | 'half_year' | 'year' | 'custom';
 
@@ -22,13 +22,18 @@ export default function NewReportPage() {
   const router = useRouter();
   const { toast } = useShell();
 
+  // 从周视图跳转过来时可指定具体某周（week=YYYY-MM-DD，该周任意一天）
+  // 用 window.location 直读，避免 useSearchParams 触发 Suspense 边界要求
+  const [weekParam, setWeekParam] = useState('');
+  const [weekAnchor, setWeekAnchor] = useState<Date>(new Date());
+
   const [scope, setScope] = useState<Scope>('week');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [extra, setExtra] = useState('');
   const [title, setTitle] = useState('');
   const [generating, setGenerating] = useState(false);
-  const [result, setResult] = useState<{ id: number; content: string } | null>(null);
+  const [result, setResult] = useState<{ id: number; content: string; degraded?: boolean; reason?: string } | null>(null);
   const [error, setError] = useState('');
   const [llmOk, setLlmOk] = useState<boolean | null>(null);
 
@@ -41,6 +46,14 @@ export default function NewReportPage() {
     const m = monthRange(now);
     setCustomStart(m.start);
     setCustomEnd(ymd(now));
+
+    // 解析 URL 上的 week 参数
+    const sp = new URLSearchParams(window.location.search);
+    const w = sp.get('week');
+    if (w && /^\d{4}-\d{2}-\d{2}$/.test(w)) {
+      setWeekParam(w);
+      setWeekAnchor(parseYmd(w));
+    }
 
     fetch('/api/settings')
       .then((r) => r.json())
@@ -59,7 +72,7 @@ export default function NewReportPage() {
   const currentRange = (() => {
     const now = new Date();
     if (scope === 'week') {
-      const w = isoWeek(now);
+      const w = isoWeek(weekAnchor);
       return `${w.start} 至 ${w.end}`;
     }
     if (scope === 'month') {
@@ -107,7 +120,9 @@ export default function NewReportPage() {
       const url =
         scope === 'custom'
           ? `/api/reports?start=${customStart}&end=${customEnd}`
-          : '/api/reports';
+          : scope === 'week' && weekParam
+            ? `/api/reports?week=${weekParam}`
+            : '/api/reports';
 
       const res = await fetch(url, {
         method: 'POST',
@@ -116,8 +131,13 @@ export default function NewReportPage() {
       });
       const json = await res.json();
       if (json.ok) {
-        setResult({ id: json.data.id, content: json.data.content });
-        toast('报告生成完成', 'success');
+        setResult({
+          id: json.data.id,
+          content: json.data.content,
+          degraded: json.data.degraded,
+          reason: json.data.reason
+        });
+        toast(json.data.degraded ? '已生成结构预览（未调用模型）' : '报告生成完成', 'success');
       } else {
         setError(json.error || '生成失败');
       }
@@ -142,7 +162,8 @@ export default function NewReportPage() {
 
       {llmOk === false && (
         <div className="alert alert-warn" style={{ marginBottom: 16 }}>
-          尚未配置大模型，无法生成报告。请前往{' '}
+          尚未配置大模型，生成将走<strong>降级模式</strong>：系统按数据库中的客观事实直接排出一份结构完整的空文骨架，
+          数据真实但不自动撰写成效表述。配置后即可获得完整成稿，请前往{' '}
           <Link href="/settings" style={{ color: 'var(--red-700)', fontWeight: 600 }}>
             系统设置
           </Link>{' '}
@@ -295,7 +316,7 @@ export default function NewReportPage() {
               className="btn btn-primary btn-lg"
               style={{ width: '100%' }}
               onClick={generate}
-              disabled={generating || llmOk === false}
+              disabled={generating}
             >
               {generating ? (
                 <>
@@ -334,6 +355,13 @@ export default function NewReportPage() {
             )}
           </div>
           <div className="panel-body">
+            {result?.degraded && (
+              <div className="alert alert-warn" style={{ marginBottom: 14 }}>
+                <strong>本次为结构预览，未调用模型。</strong>
+                {result.reason || '以下内容由系统按数据库中的客观事实自动排布，数据真实，但不包含自动撰写的成效表述。'}
+                如需完整成稿，请配置大模型后重新生成。
+              </div>
+            )}
             {generating ? (
               <div style={{ padding: '60px 20px', textAlign: 'center' }}>
                 <span className="spinner dark" style={{ marginRight: 8, verticalAlign: -2 }} />

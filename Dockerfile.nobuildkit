@@ -1,0 +1,48 @@
+# ============ 构建阶段（无 BuildKit 语法，兼容老版本 Docker）============
+# 与 Dockerfile 功能等价，仅去掉 RUN --mount 缓存挂载。
+# 当 Docker 版本过旧（< 23）导致 `RUN --mount` 报语法错误时改用本文件：
+#   docker compose build --build-arg DOCKERFILE=Dockerfile.nobuildkit
+FROM node:24-alpine AS builder
+
+WORKDIR /app
+
+ARG NPM_REGISTRY=https://registry.npmjs.org
+COPY package.json package-lock.json* ./
+RUN npm config set registry "$NPM_REGISTRY" \
+    && (npm ci --no-audit --no-fund --prefer-offline || npm install --no-audit --no-fund --prefer-offline)
+
+COPY . .
+
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
+
+# ============ 运行阶段 ============
+FROM node:24-alpine AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3080 \
+    HOSTNAME=0.0.0.0 \
+    DATA_DIR=/app/data \
+    TZ=Asia/Shanghai
+
+RUN apk add --no-cache tzdata font-noto-cjk curl \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone
+
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+
+RUN mkdir -p /app/data && chown -R node:node /app
+
+USER node
+
+EXPOSE 3080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
+  CMD curl -fsS http://127.0.0.1:3080/api/health || exit 1
+
+CMD ["node", "server.js"]

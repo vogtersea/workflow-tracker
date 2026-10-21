@@ -59,7 +59,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
       'owner_id',
       'estimate_hours',
       'actual_hours',
-      'tag_ids'
+      'tag_ids',
+      'project_id'
     ];
     for (const f of fields) {
       if (f in body) payload[f] = body[f];

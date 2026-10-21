@@ -31,6 +31,9 @@ export interface TaskRow {
   template_id: number | null;
   period_label: string | null;
   week_start: string | null;
+  project_id: number | null;
+  project_name?: string | null;
+  project_color?: string | null;
   done_at: string | null;
   archived_at: string | null;
   estimate_hours: number | null;
@@ -48,11 +51,14 @@ export interface TaskRow {
 const BASE_SELECT = `
   SELECT t.*,
          u.display_name AS owner_name,
+         pj.name AS project_name,
+         pj.color AS project_color,
          (SELECT COUNT(*) FROM task_progress p WHERE p.task_id = t.id) AS progress_count,
          (SELECT p.created_at FROM task_progress p WHERE p.task_id = t.id ORDER BY p.id DESC LIMIT 1) AS last_progress_at,
          (SELECT p.content FROM task_progress p WHERE p.task_id = t.id ORDER BY p.id DESC LIMIT 1) AS last_progress
   FROM tasks t
   LEFT JOIN users u ON u.id = t.owner_id
+  LEFT JOIN projects pj ON pj.id = t.project_id
 `;
 
 /** 批量装载标签，避免 N+1 */
@@ -88,6 +94,7 @@ export interface QueryOptions {
   /** 非管理员时强制只看本人 */
   restrictToOwner?: number;
   tagId?: number;
+  projectId?: number;
   keyword?: string;
   dueFrom?: string;
   dueTo?: string;
@@ -117,6 +124,15 @@ export function queryTasks(opts: QueryOptions = {}): { rows: TaskRow[]; total: n
   if (opts.tagId) {
     where.push('EXISTS (SELECT 1 FROM task_tags x WHERE x.task_id = t.id AND x.tag_id = ?)');
     params.push(opts.tagId);
+  }
+  if (opts.projectId != null) {
+    if (opts.projectId === 0) {
+      // 0 表示「未归入任何项目」
+      where.push('t.project_id IS NULL');
+    } else {
+      where.push('t.project_id = ?');
+      params.push(opts.projectId);
+    }
   }
   if (opts.keyword) {
     where.push('(t.title LIKE ? OR t.detail LIKE ? OR t.done_criteria LIKE ?)');
@@ -210,6 +226,7 @@ export function createTask(data: {
   period_label?: string | null;
   estimate_hours?: number | null;
   status?: string;
+  project_id?: number | null;
 }): number {
   const db = getDb();
   const week = data.due_date ? isoWeek(new Date(data.due_date)) : isoWeek();
@@ -219,8 +236,8 @@ export function createTask(data: {
     .prepare(
       `INSERT INTO tasks
        (title, detail, done_criteria, due_date, priority, status, owner_id, template_id,
-        period_label, week_start, estimate_hours, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        period_label, week_start, estimate_hours, created_by, project_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       data.title.trim(),
@@ -234,7 +251,8 @@ export function createTask(data: {
       data.period_label ?? null,
       weekStart,
       data.estimate_hours ?? null,
-      data.created_by ?? null
+      data.created_by ?? null,
+      data.project_id ?? null
     );
 
   const id = Number(info.lastInsertRowid);
@@ -256,6 +274,7 @@ export function updateTask(
     actual_hours: number | null;
     tag_ids: number[];
     sort_index: number;
+    project_id: number | null;
   }>
 ) {
   const db = getDb();
@@ -272,7 +291,8 @@ export function updateTask(
     owner_id: 'owner_id',
     estimate_hours: 'estimate_hours',
     actual_hours: 'actual_hours',
-    sort_index: 'sort_index'
+    sort_index: 'sort_index',
+    project_id: 'project_id'
   };
 
   for (const [k, col] of Object.entries(map)) {

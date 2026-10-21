@@ -2,6 +2,7 @@ node_modules
 .next
 .next-old-*
 .next-bak-*
+.next-b2
 .git
 .gitignore
 data
@@ -22,3 +23,12 @@ next-env.d.ts
 *.tsbuildinfo
 .tmp-cadence
 .tmp-test
+.workbuddy
+# 桌面版打包产生的临时安装目录（体积大，且 Docker 构建用不到）
+tmp*-inst
+# 以下为开发/Windows 打包专用，容器镜像不需要
+build
+scripts
+docs
+*.md
+!README.md

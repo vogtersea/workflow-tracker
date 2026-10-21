@@ -30,6 +30,7 @@ export async function GET(req: Request) {
       restrictToOwner: restrict ?? undefined,
       ownerId,
       tagId: p.get('tag') ? Number(p.get('tag')) : undefined,
+      projectId: p.get('project') !== null ? Number(p.get('project')) : undefined,
       keyword: p.get('q') || undefined,
       dueFrom: p.get('dueFrom') || undefined,
       dueTo: p.get('dueTo') || undefined,
@@ -73,6 +74,7 @@ export async function POST(req: Request) {
       owner_id: ownerId,
       tag_ids: Array.isArray(body.tag_ids) ? body.tag_ids : [],
       estimate_hours: body.estimate_hours ?? null,
+      project_id: body.project_id ?? null,
       created_by: user.id
     });
 

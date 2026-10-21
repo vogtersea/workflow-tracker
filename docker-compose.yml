@@ -2,7 +2,10 @@ services:
   workflow-tracker:
     build:
       context: .
-      dockerfile: Dockerfile
+      # 默认 Dockerfile 使用 BuildKit 缓存挂载加速重建。
+      # 老版本 Docker（< 23）报 `--mount` 语法错误时，改用 Dockerfile.nobuildkit：
+      #   DOCKERFILE=Dockerfile.nobuildkit docker compose build
+      dockerfile: ${DOCKERFILE:-Dockerfile}
       args:
         # 国内网络可设 NPM_REGISTRY=https://registry.npmmirror.com
         NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org}

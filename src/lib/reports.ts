@@ -2,6 +2,7 @@ import { getDb } from './db';
 import { queryTasks, tagBreakdown, type TaskRow } from './tasks';
 import { chat, isLlmConfigured } from './llm';
 import { cnDate, ddlHint, PRIORITY_LABEL, STATUS_LABEL, diffDays } from './date';
+import { singleSkeleton, periodSkeleton } from './skeleton';
 
 /**
  * 总结报告生成
@@ -9,6 +10,11 @@ import { cnDate, ddlHint, PRIORITY_LABEL, STATUS_LABEL, diffDays } from './date'
  *  1. 先做确定性统计（完成率、逾期、标签分布），作为"事实底座"
  *  2. 再把工作明细与进展记录压成结构化上下文交给模型
  *  3. 要求模型严格基于给定材料写作，不得虚构未出现的事实
+ *
+ * 降级策略（degraded）：
+ *  未配置大模型、或大模型调用失败时，不抛错终止，而是用 skeleton 模块
+ *  直接排出一份「填好客观数据的空文」，并在返回结果中标记 degraded=true，
+ *  由界面显示黄色横幅提示「本次为结构预览，未调用模型」。
  */
 
 export type ReportScope = 'single' | 'week' | 'month' | 'half_year' | 'year' | 'custom';
@@ -120,7 +126,7 @@ const SYSTEM_PROMPT = `你是一名经验丰富的文字工作者，擅长起草
 export async function generateSingleReport(
   taskId: number,
   opts?: { extraInstruction?: string }
-): Promise<{ content: string; model: string }> {
+): Promise<{ content: string; model: string; degraded: boolean; reason?: string }> {
   const db = getDb();
   const task = queryTasks({ status: 'all', limit: 1000 }).rows.find((t) => t.id === taskId);
   if (!task) throw new Error('工作不存在');
@@ -172,16 +178,40 @@ ${opts?.extraInstruction ? `【额外要求】${opts.extraInstruction}\n` : ''}
 
 篇幅控制在 800 至 1200 字。材料中的信息如不足以支撑某一章节，可精简该章节，但不得编造内容。`;
 
-  const { text } = await chat([
-    { role: 'system', content: SYSTEM_PROMPT },
-    { role: 'user', content: userPrompt }
-  ]);
-
   const cfg = db.prepare("SELECT value FROM settings WHERE key = 'llm.model'").get() as
     | { value: string }
     | undefined;
 
-  return { content: text, model: cfg?.value || '' };
+  // 降级路径 1：未配置大模型
+  if (!isLlmConfigured()) {
+    return {
+      content: singleSkeleton(task, progress),
+      model: '',
+      degraded: true,
+      reason: '尚未配置大模型，本次为系统按数据库事实自动排布的结构预览'
+    };
+  }
+
+  // 降级路径 2：模型调用失败（网络、鉴权、额度、超时等）
+  let text = '';
+  try {
+    const r = await chat([
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt }
+    ]);
+    text = r.text;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('[reports] 模型调用失败，转为骨架降级', e);
+    return {
+      content: singleSkeleton(task, progress),
+      model: cfg?.value || '',
+      degraded: true,
+      reason: `大模型调用失败（${msg.slice(0, 160)}），本次为系统按数据库事实自动排布的结构预览`
+    };
+  }
+
+  return { content: text, model: cfg?.value || '', degraded: false };
 }
 
 /** 周期工作总结 */
@@ -190,7 +220,7 @@ export async function generatePeriodReport(
   rangeStart: string,
   rangeEnd: string,
   opts?: { ownerId?: number | null; extraInstruction?: string; title?: string }
-): Promise<{ content: string; model: string; taskCount: number }> {
+): Promise<{ content: string; model: string; taskCount: number; degraded: boolean; reason?: string }> {
   const { rows: tasks } = queryTasks({
     status: 'all',
     rangeStart,
@@ -229,16 +259,48 @@ ${opts?.extraInstruction ? `【额外要求】${opts.extraInstruction}\n` : ''}
 篇幅控制在 1200 至 1800 字。${periodText}。
 注意：不得编造材料中未出现的工作内容、数据或评价。`;
 
-  const { text } = await chat([
-    { role: 'system', content: SYSTEM_PROMPT },
-    { role: 'user', content: userPrompt }
-  ]);
-
   const cfg = getDb().prepare("SELECT value FROM settings WHERE key = 'llm.model'").get() as
     | { value: string }
     | undefined;
 
-  return { content: text, model: cfg?.value || '', taskCount: tasks.length };
+  // 降级路径 1：未配置大模型
+  if (!isLlmConfigured()) {
+    return {
+      content: periodSkeleton(tasks, { generatedAt: new Date().toISOString(), rangeStart, rangeEnd }, {
+        scopeName,
+        extraInstruction: opts?.extraInstruction
+      }),
+      model: '',
+      taskCount: tasks.length,
+      degraded: true,
+      reason: '尚未配置大模型，本次为系统按数据库事实自动排布的结构预览'
+    };
+  }
+
+  // 降级路径 2：模型调用失败
+  let text = '';
+  try {
+    const r = await chat([
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt }
+    ]);
+    text = r.text;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('[reports] 模型调用失败，转为骨架降级', e);
+    return {
+      content: periodSkeleton(tasks, { generatedAt: new Date().toISOString(), rangeStart, rangeEnd }, {
+        scopeName,
+        extraInstruction: opts?.extraInstruction
+      }),
+      model: cfg?.value || '',
+      taskCount: tasks.length,
+      degraded: true,
+      reason: `大模型调用失败（${msg.slice(0, 160)}），本次为系统按数据库事实自动排布的结构预览`
+    };
+  }
+
+  return { content: text, model: cfg?.value || '', taskCount: tasks.length, degraded: false };
 }
 
 /** 保存报告 */

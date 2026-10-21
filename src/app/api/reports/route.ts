@@ -7,7 +7,7 @@ import {
   listReports,
   type ReportScope
 } from '@/lib/reports';
-import { isoWeek, monthRange, yearRange, halfYearRange, today, ymd } from '@/lib/date';
+import { isoWeek, monthRange, yearRange, halfYearRange, today, ymd, parseYmd } from '@/lib/date';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -17,6 +17,12 @@ function resolveRange(scope: ReportScope, p: URLSearchParams) {
   const now = today();
   switch (scope) {
     case 'week': {
+      // 支持指定具体某周（week=YYYY-MM-DD，该周任意一天）
+      const wParam = p.get('week');
+      if (wParam && /^\d{4}-\d{2}-\d{2}$/.test(wParam)) {
+        const w = isoWeek(parseYmd(wParam));
+        return { start: w.start, end: w.end, label: `${w.label} 周工作总结` };
+      }
       const w = isoWeek(now);
       return { start: w.start, end: w.end, label: `${w.label} 周工作总结` };
     }
@@ -75,7 +81,10 @@ export async function POST(req: Request) {
         createdBy: user.id
       });
       audit(user.id, 'report.generate', String(id), 'single');
-      return NextResponse.json({ ok: true, data: { id, content: r.content } });
+      return NextResponse.json({
+        ok: true,
+        data: { id, content: r.content, degraded: r.degraded, reason: r.reason }
+      });
     }
 
     const range = resolveRange(scope, url.searchParams);
@@ -101,7 +110,14 @@ export async function POST(req: Request) {
     audit(user.id, 'report.generate', String(id), scope);
     return NextResponse.json({
       ok: true,
-      data: { id, content: r.content, taskCount: r.taskCount, range }
+      data: {
+        id,
+        content: r.content,
+        taskCount: r.taskCount,
+        range,
+        degraded: r.degraded,
+        reason: r.reason
+      }
     });
   } catch (e) {
     if (e instanceof UnauthorizedError)

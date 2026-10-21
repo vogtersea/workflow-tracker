@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ConfirmDialog, Loading, StatusChip, PriorityChip, DueChip, TagPills, Modal } from '@/components/ui';
 import { useShell } from '@/components/Shell';
-import type { TaskDto, ProgressDto, TagDto, CurrentUser } from '@/types';
+import type { TaskDto, ProgressDto, TagDto, CurrentUser, ProjectDto } from '@/types';
 import { PRIORITY_LABEL, STATUS_LABEL } from '@/lib/date';
 
 type Detail = TaskDto & { progress: ProgressDto[] };
@@ -34,9 +34,11 @@ export default function TaskDetailPage() {
     owner_id: '',
     estimate_hours: '',
     actual_hours: '',
+    project_id: '',
     tag_ids: [] as number[]
   });
   const [tags, setTags] = useState<TagDto[]>([]);
+  const [projects, setProjects] = useState<ProjectDto[]>([]);
   const [users, setUsers] = useState<CurrentUser[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -44,6 +46,8 @@ export default function TaskDetailPage() {
   const [showDelete, setShowDelete] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [reportContent, setReportContent] = useState('');
+  const [reportDegraded, setReportDegraded] = useState(false);
+  const [reportReason, setReportReason] = useState('');
   const [showReport, setShowReport] = useState(false);
 
   const isAdmin = user?.role === 'admin';
@@ -69,6 +73,10 @@ export default function TaskDetailPage() {
     fetch('/api/tags')
       .then((r) => r.json())
       .then((j) => j.ok && setTags(j.data))
+      .catch(() => {});
+    fetch('/api/projects')
+      .then((r) => r.json())
+      .then((j) => j.ok && setProjects(j.data))
       .catch(() => {});
     if (isAdmin) {
       fetch('/api/users')
@@ -134,6 +142,7 @@ export default function TaskDetailPage() {
       owner_id: task.owner_id ? String(task.owner_id) : '',
       estimate_hours: task.estimate_hours != null ? String(task.estimate_hours) : '',
       actual_hours: task.actual_hours != null ? String(task.actual_hours) : '',
+      project_id: task.project_id ? String(task.project_id) : '',
       tag_ids: task.tags?.map((t) => t.id) || []
     });
     setEditing(true);
@@ -150,6 +159,7 @@ export default function TaskDetailPage() {
       owner_id: form.owner_id ? Number(form.owner_id) : null,
       estimate_hours: form.estimate_hours ? Number(form.estimate_hours) : null,
       actual_hours: form.actual_hours ? Number(form.actual_hours) : null,
+      project_id: form.project_id ? Number(form.project_id) : null,
       tag_ids: form.tag_ids
     });
     setSaving(false);
@@ -192,6 +202,8 @@ export default function TaskDetailPage() {
     setGenerating(true);
     setShowReport(true);
     setReportContent('');
+    setReportDegraded(false);
+    setReportReason('');
     try {
       const res = await fetch('/api/reports', {
         method: 'POST',
@@ -206,6 +218,8 @@ export default function TaskDetailPage() {
       const json = await res.json();
       if (json.ok) {
         setReportContent(json.data.content);
+        setReportDegraded(Boolean(json.data.degraded));
+        setReportReason(json.data.reason || '');
       } else {
         setReportContent(`生成失败：${json.error}`);
       }
@@ -269,6 +283,12 @@ export default function TaskDetailPage() {
                 <PriorityChip priority={task.priority} />
                 {task.period_label && (
                   <span className="chip chip-gold">周期 {task.period_label}</span>
+                )}
+                {task.project_name && (
+                  <span className="chip chip-tag">
+                    <span className="dot" style={{ background: task.project_color || '#7f1d1d' }} />
+                    {task.project_name}
+                  </span>
                 )}
                 {task.tags?.length > 0 && <TagPills tags={task.tags} />}
               </div>
@@ -438,6 +458,16 @@ export default function TaskDetailPage() {
               <dd>{task.due_date || '未设置'}</dd>
               <dt>所属周</dt>
               <dd>{task.week_start || '—'}</dd>
+              <dt>所属项目</dt>
+              <dd>
+                {task.project_name ? (
+                  <Link href={`/projects`} style={{ color: 'var(--red-700)' }}>
+                    {task.project_name}
+                  </Link>
+                ) : (
+                  '未归入项目'
+                )}
+              </dd>
               <dt>优先级</dt>
               <dd>{PRIORITY_LABEL[task.priority] || task.priority}</dd>
               <dt>状态</dt>
@@ -579,6 +609,21 @@ export default function TaskDetailPage() {
             </div>
           </div>
           <div className="field">
+            <label className="field-label">所属项目</label>
+            <select
+              className="select"
+              value={form.project_id}
+              onChange={(e) => setForm({ ...form, project_id: e.target.value })}
+            >
+              <option value="">不归入项目</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
             <label className="field-label">标签</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {tags.map((t) => {
@@ -630,7 +675,16 @@ export default function TaskDetailPage() {
               </div>
             </div>
           ) : (
-            <div className="report-body" dangerouslySetInnerHTML={{ __html: mdToHtml(reportContent) }} />
+            <>
+              {reportDegraded && (
+                <div className="alert alert-warn" style={{ marginBottom: 14 }}>
+                  <strong>本次为结构预览，未调用模型。</strong>
+                  {reportReason ||
+                    '以下内容由系统按数据库中的客观事实自动排布，数据真实，但不包含自动撰写的成效表述。'}
+                </div>
+              )}
+              <div className="report-body" dangerouslySetInnerHTML={{ __html: mdToHtml(reportContent) }} />
+            </>
           )}
         </Modal>
       )}

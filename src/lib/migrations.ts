@@ -50,6 +50,30 @@ export const MIGRATIONS: Migration[] = [
         );
       `);
     }
+  },
+  {
+    version: 4,
+    name: 'projects',
+    up: (db) => {
+      // 项目分组：与标签并存（项目回答「属于哪件事」，标签回答「属于哪类事」）
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS projects (
+          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+          name        TEXT NOT NULL UNIQUE,
+          description TEXT NOT NULL DEFAULT '',
+          color       TEXT NOT NULL DEFAULT '#7f1d1d',
+          status      TEXT NOT NULL DEFAULT 'active',
+          created_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+        );
+      `);
+
+      // tasks.project_id 增量列：老库需补列，新库由上面的基线建表
+      const cols = db.prepare('PRAGMA table_info(tasks)').all() as { name: string }[];
+      if (!cols.some((c) => c.name === 'project_id')) {
+        db.exec('ALTER TABLE tasks ADD COLUMN project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL');
+      }
+      db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);');
+    }
   }
 ];
 

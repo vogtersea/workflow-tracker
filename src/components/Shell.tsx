@@ -38,6 +38,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
   { group: '工作', items: [
     { href: '/', label: '工作台', icon: '◱', key: 'home' },
     { href: '/tasks', label: '工作管理', icon: '☰', key: 'tasks', badge: 'open' },
+    { href: '/week', label: '周视图', icon: '▤', key: 'week' },
     { href: '/calendar', label: '日历视图', icon: '▦', key: 'calendar' }
   ]},
   { group: '报告', items: [
@@ -46,6 +47,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
   ]},
   { group: '管理', items: [
     { href: '/templates', label: '例行工作', icon: '↻', key: 'templates' },
+    { href: '/projects', label: '项目分组', icon: '◫', key: 'projects' },
     { href: '/tags', label: '标签管理', icon: '◈', key: 'tags' },
     { href: '/notifications', label: '待办提醒', icon: '⚑', key: 'noti', badge: 'unseen' }
   ]},

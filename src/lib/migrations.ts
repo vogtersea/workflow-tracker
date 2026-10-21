@@ -1,4 +1,4 @@
-import type { DbLike } from './db';
+import type { DbLike } from './db-types';
 
 /**
  * 迁移登记表

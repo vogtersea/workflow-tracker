@@ -10,11 +10,11 @@
 
 | 形态 | 适合场景 | 下载 |
 |---|---|---|
-| **Windows 桌面版** | 电脑上日常使用，双击即装，独立窗口 | [v1.0.0-p2](https://github.com/vogtersea/workflow-tracker/releases/tag/v1.0.0-p2) |
-| **手机单机版**（测试版 ⚠️） | 手机上完全离线使用，不连任何服务器 | [v1.0.0-beta.1](https://github.com/vogtersea/workflow-tracker/releases/tag/v1.0.0-beta.1) |
+| **Windows 桌面版** | 电脑上日常使用，双击即装，独立窗口 | [v1.0.1](https://github.com/vogtersea/workflow-tracker/releases/tag/v1.0.1) |
+| **手机单机版** | 手机上完全离线使用，不连任何服务器 | [v1.0.1](https://github.com/vogtersea/workflow-tracker/releases/tag/v1.0.1) |
 | **Docker 版** | 部署到 NAS / 服务器，多设备通过浏览器访问 | 见[部署章节](#五nas-部署) |
 
-> 手机单机版当前为测试版（beta），功能与稳定性仍在验证中；数据存手机本机，卸载即清空。
+> 手机单机版与桌面版同属 v1.0.1 功能集；数据存手机本机，卸载即清空，建议做好重要数据的多处备份。
 
 ---
 
@@ -140,13 +140,13 @@
 
 ## 三、Windows 桌面版（免 Docker）
 
-交付物是**单个安装程序 `WorkflowTracker-Desktop-Setup-1.0.0.exe`**（121 MB），双击安装，之后从开始菜单或桌面启动。**这是独立桌面窗口程序，不在浏览器里打开**：有自己的图标、任务栏项、窗口菜单，没有地址栏。
+交付物是**单个安装程序 `WorkflowTracker-Desktop-Setup-1.0.1.exe`**（128 MB），双击安装，之后从开始菜单或桌面启动。**这是独立桌面窗口程序，不在浏览器里打开**：有自己的图标、任务栏项、窗口菜单，没有地址栏。
 
 **下载地址**：安装包超过 GitHub 单文件 100 MB 限制，因此放在 Release 附件里，不在仓库文件树中。
 
-- 桌面版（推荐）：[WorkflowTracker-Desktop-Setup-1.0.0.exe](https://github.com/vogtersea/workflow-tracker/releases/download/v1.0.0-p2/WorkflowTracker-Desktop-Setup-1.0.0.exe)
-- 服务版（可选）：[WorkflowTracker-Setup-1.0.0.exe](https://github.com/vogtersea/workflow-tracker/releases/download/v1.0.0-p2/WorkflowTracker-Setup-1.0.0.exe)
-- 版本页面：[Releases · v1.0.0-p2](https://github.com/vogtersea/workflow-tracker/releases/tag/v1.0.0-p2)
+- 桌面版（推荐）：[WorkflowTracker-Desktop-Setup-1.0.1.exe](https://github.com/vogtersea/workflow-tracker/releases/download/v1.0.1/WorkflowTracker-Desktop-Setup-1.0.1.exe)
+- 服务版（可选）：[WorkflowTracker-Setup-1.0.1.exe](https://github.com/vogtersea/workflow-tracker/releases/download/v1.0.1/WorkflowTracker-Setup-1.0.1.exe)
+- 版本页面：[Releases · v1.0.1](https://github.com/vogtersea/workflow-tracker/releases/tag/v1.0.1)
 
 运行不依赖 Docker、不依赖 Node、不需要管理员权限；数据落在本机 `%APPDATA%\工作流程跟踪工作台\data`。
 
@@ -154,8 +154,8 @@
 
 | 形态 | 文件 | 说明 |
 |---|---|---|
-| 桌面版（推荐） | `WorkflowTracker-Desktop-Setup-1.0.0.exe` | 独立窗口程序，安装后从开始菜单启动 |
-| 服务版（可选） | `WorkflowTracker-Setup-1.0.0.exe` | 同一套界面，跑在本机服务里，用浏览器访问 |
+| 桌面版（推荐） | `WorkflowTracker-Desktop-Setup-1.0.1.exe` | 独立窗口程序，安装后从开始菜单启动 |
+| 服务版（可选） | `WorkflowTracker-Setup-1.0.1.exe` | 同一套界面，跑在本机服务里，用浏览器访问 |
 
 首次启动自动生成管理员密码，弹窗提示一次，同时留存在 `data\初始密码.txt`，登录后请立即改密。
 
@@ -192,13 +192,13 @@ node build/windows/build-windows.mjs --installer     # 顺带生成 Setup.exe（
 - 数据位置：Windows 版在程序目录 `data\`，Docker 版挂载到 `/app/data`。两者 schema 相同，三个 `workflow.db*` 文件可直接互拷。
 - 进程管理：Windows 版一个窗口对应一个服务，不做系统托盘，避免引入原生依赖。
 
-## 四、手机单机版（测试版）
+## 四、手机单机版
 
-> **⚠️ 当前为测试版（beta）**：功能与稳定性仍在验证中，请先在小范围试用，勿作为唯一数据存放点。
+> **正式版**：已通过两轮全平台回归（服务端接口 44 项、手机端本地全流程 32 项、例行周期 42 项、Obsidian 集成 14 项）。手机端尚未在真机上大规模验证，遇到问题欢迎提 Issue。
 
 交付物是**一个 APK 安装包**，安装后在手机上独立运行：**完全不连接任何服务器**（安装包未申请 INTERNET 权限，从操作系统层面杜绝联网），全部数据存放在手机本机的 IndexedDB，随应用卸载而清除。
 
-**下载地址**：[Releases · v1.0.0-beta.1（测试版）](https://github.com/vogtersea/workflow-tracker/releases/tag/v1.0.0-beta.1)
+**下载地址**：[Releases · v1.0.1](https://github.com/vogtersea/workflow-tracker/releases/tag/v1.0.1)
 
 ### 与其他版本的关系
 

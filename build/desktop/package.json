@@ -1,7 +1,7 @@
 {
   "name": "workflow-tracker-desktop",
   "productName": "工作流程跟踪工作台",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "工作流程跟踪工作台 · 桌面版",
   "main": "main.js",
   "author": "本地部署",

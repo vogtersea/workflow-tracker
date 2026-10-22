@@ -1,10 +1,10 @@
 ; 工作流程跟踪工作台 · 桌面版安装包配置
 ;
 ; 由 build-desktop.mjs 调用 ISCC 编译：
-;   ISCC.exe /DAppVersion=1.0.0 /DSourceDir=<打包后的程序目录> /DOutputDir=<输出目录> installer-desktop.iss
+;   ISCC.exe /DAppVersion=1.0.1 /DSourceDir=<打包后的程序目录> /DOutputDir=<输出目录> installer-desktop.iss
 
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.0.1"
 #endif
 #ifndef SourceDir
   #define SourceDir "..\..\outputs\win-dist\desktop\WorkflowTracker-win32-x64"

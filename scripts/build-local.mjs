@@ -66,6 +66,15 @@ for (const d of [outLocal, path.join(root, distDir)]) {
   fs.rmSync(d, { recursive: true, force: true });
 }
 
+// 1.5 清掉其他 dist 目录里的生成类型：Next 每种 distDir 都会往 tsconfig
+// include 里追加一条 <distDir>/types，服务端构建留下的类型引用了
+// src/app/api（本地构建时已被挪走），不清理会导致类型检查报错
+for (const name of fs.readdirSync(root)) {
+  if (!name.startsWith('.next') || name === distDir) continue;
+  const typesDir = path.join(root, name, 'types');
+  if (fs.existsSync(typesDir)) fs.rmSync(typesDir, { recursive: true, force: true });
+}
+
 // 2. 挪走服务端专属文件
 fs.rmSync(skipDir, { recursive: true, force: true });
 moveAway('src/app/api', 'api');

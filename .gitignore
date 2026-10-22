@@ -39,3 +39,9 @@ public/sqlite3.wasm
 android/*.keystore
 android/keystore.properties
 .tmp-captpl/
+.build-log.txt
+.export-log.txt
+.smoke-log.txt
+.next-rel*
+.next-old-*/
+.next-bak-*/

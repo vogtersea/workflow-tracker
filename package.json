@@ -1,6 +1,6 @@
 {
   "name": "workflow-tracker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "工作流程跟踪工作台 - 本地化部署的工作管理与总结报告系统",
   "scripts": {

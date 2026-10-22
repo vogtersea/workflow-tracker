@@ -11,7 +11,7 @@
 | 形态 | 适合场景 | 下载 |
 |---|---|---|
 | **Windows 桌面版** | 电脑上日常使用，双击即装，独立窗口 | [v1.0.0-p2](https://github.com/vogtersea/workflow-tracker/releases/tag/v1.0.0-p2) |
-| **手机单机版**（测试版 ⚠️） | 手机上完全离线使用，不连任何服务器 | [v1.1.0-beta.1](https://github.com/vogtersea/workflow-tracker/releases/tag/v1.1.0-beta.1) |
+| **手机单机版**（测试版 ⚠️） | 手机上完全离线使用，不连任何服务器 | [v1.0.0-beta.1](https://github.com/vogtersea/workflow-tracker/releases/tag/v1.0.0-beta.1) |
 | **Docker 版** | 部署到 NAS / 服务器，多设备通过浏览器访问 | 见[部署章节](#五nas-部署) |
 
 > 手机单机版当前为测试版（beta），功能与稳定性仍在验证中；数据存手机本机，卸载即清空。
@@ -198,7 +198,7 @@ node build/windows/build-windows.mjs --installer     # 顺带生成 Setup.exe（
 
 交付物是**一个 APK 安装包**，安装后在手机上独立运行：**完全不连接任何服务器**（安装包未申请 INTERNET 权限，从操作系统层面杜绝联网），全部数据存放在手机本机的 IndexedDB，随应用卸载而清除。
 
-**下载地址**：[Releases · v1.1.0-beta.1（测试版）](https://github.com/vogtersea/workflow-tracker/releases/tag/v1.1.0-beta.1)
+**下载地址**：[Releases · v1.0.0-beta.1（测试版）](https://github.com/vogtersea/workflow-tracker/releases/tag/v1.0.0-beta.1)
 
 ### 与其他版本的关系
 

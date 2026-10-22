@@ -36,3 +36,6 @@ android/app/src/main/assets/capacitor.config.json
 tmp*-inst/
 tmpinst*/
 public/sqlite3.wasm
+android/*.keystore
+android/keystore.properties
+.tmp-captpl/

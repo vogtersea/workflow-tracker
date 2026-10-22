@@ -349,7 +349,7 @@ export default function NewReportPage() {
                 >
                   MD
                 </a>
-                <Link href={`/reports/${result.id}`} className="btn btn-sm">
+                <Link href={`/reports/detail?id=${result.id}`} className="btn btn-sm">
                   详情
                 </Link>
               </div>

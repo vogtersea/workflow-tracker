@@ -176,7 +176,7 @@ export default function DashboardPage() {
                 return (
                   <Link
                     key={t.id}
-                    href={`/tasks/${t.id}`}
+                    href={`/tasks/detail?id=${t.id}`}
                     style={{
                       display: 'block',
                       padding: '12px 18px',
@@ -249,7 +249,7 @@ export default function DashboardPage() {
                 recent.map((t) => (
                   <Link
                     key={t.id}
-                    href={`/tasks/${t.id}`}
+                    href={`/tasks/detail?id=${t.id}`}
                     style={{
                       display: 'block',
                       padding: '10px 18px',

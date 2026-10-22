@@ -180,7 +180,7 @@ export default function CalendarPage() {
                     return (
                       <Link
                         key={t.id}
-                        href={`/tasks/${t.id}`}
+                        href={`/tasks/detail?id=${t.id}`}
                         title={t.title}
                         className="cal-task"
                         style={{

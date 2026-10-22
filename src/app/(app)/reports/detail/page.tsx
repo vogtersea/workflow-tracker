@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loading } from '@/components/ui';
 import { useShell } from '@/components/Shell';
 import { api } from '@/lib/api-client';
+import { useQueryParam } from '@/lib/use-query';
 
 interface Report {
   id: number;
@@ -20,9 +20,10 @@ interface Report {
 }
 
 export default function ReportDetailPage() {
-  const params = useParams();
   const { toast } = useShell();
-  const id = Number(params.id);
+  // 静态导出下不能用动态路由（无法预知 id），改用查询串 ?id=
+  const qid = useQueryParam('id');
+  const id = qid == null ? null : Number(qid);
 
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,6 +33,7 @@ export default function ReportDetailPage() {
   const [vaultWriting, setVaultWriting] = useState(false);
 
   const load = useCallback(async () => {
+    if (id == null) return;
     try {
       const res = await api(`/api/reports/${id}`);
       const json = await res.json();

@@ -412,7 +412,7 @@ function TasksInner() {
                   <td data-label="">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Link
-                        href={`/tasks/${t.id}`}
+                        href={`/tasks/detail?id=${t.id}`}
                         style={{ fontWeight: 600, color: 'var(--ink-900)', fontSize: 13.5 }}
                       >
                         {t.title}
@@ -467,7 +467,7 @@ function TasksInner() {
                   </td>
                   <td data-label="">
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                      <Link href={`/tasks/${t.id}`} className="btn btn-sm btn-ghost">
+                      <Link href={`/tasks/detail?id=${t.id}`} className="btn btn-sm btn-ghost">
                         详情
                       </Link>
                       {t.status === 'open' && (

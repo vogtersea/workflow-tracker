@@ -118,7 +118,7 @@ export default function ReportsPage() {
                 <tr key={r.id}>
                   <td data-label="">
                     <Link
-                      href={`/reports/${r.id}`}
+                      href={`/reports/detail?id=${r.id}`}
                       style={{ fontWeight: 600, color: 'var(--ink-900)', fontSize: 13.5 }}
                     >
                       {r.title}

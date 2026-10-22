@@ -140,7 +140,7 @@ export default function NotificationsPage() {
               due.map((d) => (
                 <Link
                   key={d.taskId}
-                  href={`/tasks/${d.taskId}`}
+                  href={`/tasks/detail?id=${d.taskId}`}
                   style={{
                     display: 'block',
                     padding: '11px 18px',

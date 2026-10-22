@@ -1,21 +1,23 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ConfirmDialog, Loading, StatusChip, PriorityChip, DueChip, TagPills, Modal } from '@/components/ui';
 import { useShell } from '@/components/Shell';
 import type { TaskDto, ProgressDto, TagDto, CurrentUser, ProjectDto } from '@/types';
 import { PRIORITY_LABEL, STATUS_LABEL } from '@/lib/date';
 import { api } from '@/lib/api-client';
+import { useQueryParam } from '@/lib/use-query';
 
 type Detail = TaskDto & { progress: ProgressDto[] };
 
 export default function TaskDetailPage() {
-  const params = useParams();
   const router = useRouter();
   const { user, toast, refreshBadges } = useShell();
-  const id = Number(params.id);
+  // 静态导出下不能用动态路由（无法预知 id），改用查询串 ?id=
+  const qid = useQueryParam('id');
+  const id = qid == null ? null : Number(qid);
 
   const [task, setTask] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,6 +56,7 @@ export default function TaskDetailPage() {
   const isAdmin = user?.role === 'admin';
 
   const load = useCallback(async () => {
+    if (id == null) return;
     try {
       const res = await api(`/api/tasks/${id}`);
       const json = await res.json();

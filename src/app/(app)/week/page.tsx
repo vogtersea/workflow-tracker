@@ -57,7 +57,7 @@ function TaskLine({ t }: { t: TaskDto }) {
       }}
     >
       <Link
-        href={`/tasks/${t.id}`}
+        href={`/tasks/detail?id=${t.id}`}
         style={{
           fontWeight: 500,
           color: 'var(--ink-900)',

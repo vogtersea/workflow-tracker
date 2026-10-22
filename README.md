@@ -4,6 +4,20 @@
 
 ---
 
+## 版本与下载
+
+同一份源码的三种形态，按使用场景选择：
+
+| 形态 | 适合场景 | 下载 |
+|---|---|---|
+| **Windows 桌面版** | 电脑上日常使用，双击即装，独立窗口 | [v1.0.0-p2](https://github.com/vogtersea/workflow-tracker/releases/tag/v1.0.0-p2) |
+| **手机单机版**（测试版 ⚠️） | 手机上完全离线使用，不连任何服务器 | [v1.1.0-beta.1](https://github.com/vogtersea/workflow-tracker/releases/tag/v1.1.0-beta.1) |
+| **Docker 版** | 部署到 NAS / 服务器，多设备通过浏览器访问 | 见[部署章节](#五nas-部署) |
+
+> 手机单机版当前为测试版（beta），功能与稳定性仍在验证中；数据存手机本机，卸载即清空。
+
+---
+
 ## 界面预览
 
 桌面端：

@@ -178,7 +178,43 @@ node build/windows/build-windows.mjs --installer     # 顺带生成 Setup.exe（
 - 数据位置：Windows 版在程序目录 `data\`，Docker 版挂载到 `/app/data`。两者 schema 相同，三个 `workflow.db*` 文件可直接互拷。
 - 进程管理：Windows 版一个窗口对应一个服务，不做系统托盘，避免引入原生依赖。
 
-## 四、NAS 部署
+## 四、手机单机版（测试版）
+
+> **⚠️ 当前为测试版（beta）**：功能与稳定性仍在验证中，请先在小范围试用，勿作为唯一数据存放点。
+
+交付物是**一个 APK 安装包**，安装后在手机上独立运行：**完全不连接任何服务器**（安装包未申请 INTERNET 权限，从操作系统层面杜绝联网），全部数据存放在手机本机的 IndexedDB，随应用卸载而清除。
+
+**下载地址**：[Releases · v1.1.0-beta.1（测试版）](https://github.com/vogtersea/workflow-tracker/releases/tag/v1.1.0-beta.1)
+
+### 与其他版本的关系
+
+| 维度 | Docker 版 / 桌面版 | 手机单机版 |
+|---|---|---|
+| 运行位置 | 服务器 / 电脑 | 手机本机 |
+| 数据存储 | SQLite 文件 | 浏览器 IndexedDB |
+| 是否联网 | 可接大模型 | 完全离线 |
+| 功能范围 | 全部 | 全部模块保留（报告生成除外，见下） |
+
+- 功能模块与桌面版一致：工作管理、项目与标签、周视图、日历、例行工作、提醒中心、用户管理等全部保留，为将来跨平台同步预留数据基础（本地密码哈希与服务端算法逐字节一致）。
+- **报告生成**依赖大模型接口，单机离线版暂不可用；报告页可正常浏览历史数据。
+- 单机版与 Docker / 桌面版**数据暂不互通**。
+
+### 使用说明
+
+1. 下载 APK 安装（Android 7.0+，需允许安装未知来源应用）。
+2. 首次打开进入初始化页，自建管理员账号。
+3. 登录后即可离线使用；数据留存于本机，**卸载应用即清空**，请自行留意。
+
+### 技术实现
+
+同一份源码的第三种形态：Next.js 全站静态导出（`node scripts/build-local.mjs`），业务逻辑跑在浏览器内（SQLite WebAssembly 内存库 + 检查点落盘 IndexedDB），再由 Capacitor 封装为 APK。图标与启动图为宫墙红 × 鎏金印章风格。
+
+```bash
+node scripts/build-local.mjs                          # 静态导出 → out-local/
+cd android && ./gradlew.bat assembleRelease           # 打 APK（需 JDK 21 + Android SDK 36）
+```
+
+## 五、NAS 部署
 
 ### 前置条件
 - x86_64 或 ARM64 架构，Linux 内核
@@ -258,7 +294,7 @@ services:
 
 ---
 
-## 五、数据存储与备份
+## 六、数据存储与备份
 
 数据库文件位置：`.env` 中 `DATA_PATH` 指定的目录下的 `workflow.db`（默认 `./data`）。
 
@@ -276,7 +312,7 @@ WAL 模式下有 `workflow.db`、`workflow.db-wal`、`workflow.db-shm` 三个文
 
 ---
 
-## 六、大模型接入示例
+## 七、大模型接入示例
 
 ### DeepSeek
 
@@ -306,7 +342,7 @@ WAL 模式下有 `workflow.db`、`workflow.db-wal`、`workflow.db-shm` 三个文
 
 ---
 
-## 七、本地开发
+## 八、本地开发
 
 ```bash
 npm install
@@ -341,7 +377,7 @@ REMINDER_LOOP=0                 # 本地开发建议关掉后台定时推送
 
 ---
 
-## 八、目录结构
+## 九、目录结构
 
 仓库顶层：
 
@@ -389,7 +425,7 @@ src/
 
 ---
 
-## 九、注意事项
+## 十、注意事项
 
 1. **首次启动后必须修改初始管理员密码**，尤其是在端口可能暴露的情况下。
    未设置 `ADMIN_PASSWORD` 时系统会生成随机口令并写入 `data/initial-password.txt`（权限 0600），不再有 `admin123456` 这类默认口令兜底。登录并改密后请删除该文件。
